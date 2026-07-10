@@ -1,0 +1,56 @@
+# ── 破晓 Daybreak 安全评估平台 ── Docker Compose 部署 ──────────────────────
+#
+# 使用方式 (在项目根目录运行):
+#   cd /home/AI/daybreak
+#   docker compose -f docker/docker-compose.yml up -d        # 启动
+#   docker compose -f docker/docker-compose.yml logs -f app  # 查看日志
+#   docker compose -f docker/docker-compose.yml down         # 停止
+#
+# 启动后访问: http://127.0.0.1:8000
+# 默认账号: admin@daybreak.local / admin
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: daybreak-app
+    restart: always
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # 持久化配置
+      - daybreak-config:/app/.daybreak
+      # Docker socket (沙箱功能需要)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 报告输出目录
+      - daybreak-reports:/app/reports
+    environment:
+      - TZ=Asia/Shanghai
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: daybreak-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: "123456"
+      POSTGRES_DB: daybreak
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - daybreak-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d daybreak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  daybreak-config:
+  daybreak-pgdata:
+  daybreak-reports:

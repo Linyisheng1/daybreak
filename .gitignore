@@ -1,0 +1,45 @@
+# ── 敏感配置
+config.json
+# (通用保护，含 API Key) (含 API Key, 绝不上传) ──
+.daybreak/config.json
+daybreak-persist/config.json
+
+# ── 运行时产物 ──
+.daybreak/app.log*
+.daybreak/agents/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── 构建产物 (Docker 构建时重新生成) ──
+web/dist-app/
+web/dist-landing/
+daybreak-persist/dist-app/
+daybreak-persist/dist-landing/
+
+# ── 报告输出 ──
+reports/*.docx
+
+# ── 日志 ──
+*.log
+
+# ── 系统文件 ──
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── Docker 数据 ──
+.postgres-data/
+.pgadmin-data/
+
+# ── Node ──
+web/node_modules/
+
+# ── 旧持久化目录 (已更名为 daybreak-persist) ──
+z3r0-persist/
+fix_sandbox.py

@@ -1,0 +1,12 @@
+.venv
+.git
+node_modules
+.daybreak
+__pycache__
+*.pyc
+*.pyo
+.postgres-data
+.pgadmin-data
+reports
+*.log
+app.log
