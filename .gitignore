@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Daybreak config (sensitive: DB passwords, API keys, encryption keys)
+config.json
+
+# Daybreak logs
+.daybreak/*.log
+.daybreak/*.log.*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.*

@@ -1,0 +1,1 @@
+function e(e){if(!Number.isFinite(e)||e<0)return`-`;let t=[`B`,`KB`,`MB`,`GB`,`TB`],n=e,r=0;for(;n>=1e3&&r<t.length-1;)n/=1e3,r+=1;return`${r===0?String(n):n.toFixed(n>=10?1:2)} ${t[r]}`}export{e as t};
