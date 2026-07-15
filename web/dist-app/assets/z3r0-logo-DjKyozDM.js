@@ -1,1 +1,0 @@
-var e=`/assets/z3r0-logo-P-3awU_D.png`;export{e as t};

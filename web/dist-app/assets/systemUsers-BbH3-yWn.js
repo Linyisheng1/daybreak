@@ -1,1 +1,0 @@
-import{c as e,i as t,l as n,o as r,u as i}from"./feedback-DaFezZus.js";var a=`/api/system-users`;function o(e){return i(`${a}/login`,e,!1)}function s(n){return e(`${a}${t(n)}`)}function c(e){return i(a,e)}function l(e,t){return n(`${a}/${e}`,t)}function u(e){return r(`${a}/${e}`)}export{l as a,s as i,u as n,o as r,c as t};

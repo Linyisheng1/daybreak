@@ -1,1 +1,0 @@
-import{c as e,i as t,o as n,u as r}from"./feedback-DaFezZus.js";var i=`/api/sandbox-images`;function a(n){return e(`${i}${t(n)}`)}function o(e){return r(i,e)}function s(e){return n(`${i}/${e}`)}export{s as n,a as r,o as t};

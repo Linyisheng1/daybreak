@@ -1,1 +1,0 @@
-"""System user persistence models."""

@@ -1,1 +1,0 @@
-"""Work project API routers."""

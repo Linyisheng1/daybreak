@@ -1,1 +1,0 @@
-import{c as e,i as t,l as n,o as r,u as i}from"./feedback-DaFezZus.js";var a=`/api/egress-proxies`;function o(n){return e(`${a}${t(n)}`)}function s(e){return i(a,e)}function c(e,t){return n(`${a}/${e}`,t)}function l(e){return r(`${a}/${e}`)}function u(e){return i(`${a}/${e}/test`)}export{c as a,u as i,l as n,o as r,s as t};
