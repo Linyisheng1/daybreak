@@ -27,3 +27,11 @@ Thumbs.db
 # Environment
 .env
 .env.*
+
+# PyInstaller artifacts
+*.spec
+daybreak-build/
+daybreak-dist/
+
+# Binary (47MB - too large for git, excluded only when needed)
+# /daybreak
