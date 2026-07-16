@@ -40,6 +40,7 @@ def create_container_sync(
             "ports": _to_docker_ports(port_mappings),
             "stdin_open": True,
             "tty": False,
+            "restart_policy": {"Name": "unless-stopped"},
         }
         if environment:
             create_kwargs["environment"] = environment

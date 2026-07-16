@@ -22,6 +22,7 @@ import { buildHostShellUrl } from "../../shared/api/hosts";
 import { buildContainerNoVNCUrl, buildContainerShellUrl, canOpenContainerNoVNC } from "../../shared/api/sandboxContainers";
 import { SANDBOX_CONTAINER_STATUS } from "../../shared/api/generated/constants";
 import { showApiError } from "../../shared/api/feedback";
+import { ErrorBoundary } from "../../shared/components/ErrorBoundary";
 import type { ManagedHost, SandboxContainer } from "../../shared/api/types";
 import { cx } from "../../shared/lib/className";
 import {
@@ -832,9 +833,11 @@ export function ContainerShellProvider({ children }: { children: ReactNode }) {
           )}
           state={fileManager}
         >
-          <Suspense fallback={<div className="file-manager-loading">Loading files...</div>}>
-            <ContainerFileManager containerId={fileManager.containerId} />
-          </Suspense>
+          <ErrorBoundary compact>
+            <Suspense fallback={<div className="file-manager-loading">Loading files...</div>}>
+              <ContainerFileManager containerId={fileManager.containerId} />
+            </Suspense>
+          </ErrorBoundary>
         </FloatingWindowLayer>
       ) : null}
     </ContainerShellContext.Provider>

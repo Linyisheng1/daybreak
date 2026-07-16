@@ -29,10 +29,13 @@ function semiEnglishOnlyPlugin(): Plugin {
 }
 
 export default defineConfig({
-  root: "app",
+  root: ".",
   plugins: [react(), semiEnglishOnlyPlugin()],
   server: {
     port: 5173,
+    fs: {
+      allow: [".."],
+    },
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",

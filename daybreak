@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.yml"
+ENV_FILE="$ROOT_DIR/.env"
+EXISTING_INSTALL=false
+ENV_CREATED=false
+
+say() {
+    printf '\n[Daybreak] %s\n' "$1"
+}
+
+fail() {
+    printf '\n[Daybreak] ERROR: %s\n' "$1" >&2
+    exit 1
+}
+
+random_secret() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 24
+    else
+        python3 -c 'import secrets; print(secrets.token_urlsafe(36))'
+    fi
+}
+
+require_docker() {
+    command -v docker >/dev/null 2>&1 || fail "Docker is not installed."
+    docker info >/dev/null 2>&1 || fail "Docker is not running or the current user cannot access it."
+    docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 is required."
+    [ -S /var/run/docker.sock ] || fail "/var/run/docker.sock is unavailable. Linux, WSL2, or a Linux Docker host is required."
+}
+
+ensure_env() {
+    if [ -f "$ENV_FILE" ]; then
+        return
+    fi
+
+    if docker volume inspect docker_daybreak-pgdata >/dev/null 2>&1 \
+        || docker volume inspect daybreak_daybreak-pgdata >/dev/null 2>&1 \
+        || docker inspect daybreak-postgres >/dev/null 2>&1; then
+        EXISTING_INSTALL=true
+    fi
+
+    umask 077
+    cat > "$ENV_FILE" <<EOF
+TZ=Asia/Shanghai
+DAYBREAK_APP_IMAGE=ghcr.io/linyisheng1/daybreak:latest
+DAYBREAK_SANDBOX_IMAGE=ghcr.io/linyisheng1/daybreak-sandbox:latest
+DAYBREAK_BOOTSTRAP_SANDBOX=true
+DAYBREAK_DB_PORT=5432
+DAYBREAK_ADMIN_USERNAME=admin
+DAYBREAK_ADMIN_EMAIL=admin@daybreak.local
+DAYBREAK_ADMIN_PASSWORD=$(random_secret)
+DAYBREAK_DB_PASSWORD=$(random_secret)
+DAYBREAK_ENCRYPT_KEY=$(random_secret)
+DAYBREAK_MODEL_BASE_URL=
+DAYBREAK_MODEL_API_KEY=
+DAYBREAK_MODEL_NAME=
+EOF
+    ENV_CREATED=true
+    say "Created .env with local random credentials."
+}
+
+load_env() {
+    [ -f "$ENV_FILE" ] || fail ".env does not exist. Run ./daybreak up first."
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+}
+
+compose() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+prepare_image() {
+    local image="$1"
+    local dockerfile="$2"
+    local context="$3"
+    local label="$4"
+
+    if docker image inspect "$image" >/dev/null 2>&1; then
+        say "$label image is already available: $image"
+        return
+    fi
+    say "Pulling $label image: $image"
+    if docker pull "$image"; then
+        return
+    fi
+    say "Published $label image is unavailable; building it locally."
+    docker build -t "$image" -f "$dockerfile" "$context"
+}
+
+remove_legacy_container() {
+    local container="$1"
+    local expected_project="docker"
+    if ! docker inspect "$container" >/dev/null 2>&1; then
+        return
+    fi
+
+    local project
+    project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$container" 2>/dev/null || true)"
+    if [ "$project" = "$expected_project" ]; then
+        return
+    fi
+    if [ "$container" = "daybreak-postgres" ]; then
+        local data_source
+        data_source="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Source}}{{end}}{{end}}' "$container")"
+        case "$data_source" in
+            */docker_daybreak-pgdata|*/daybreak_daybreak-pgdata) ;;
+            *) fail "Existing PostgreSQL uses an unknown data path ($data_source). Back it up and migrate it before using the new deployment command." ;;
+        esac
+    fi
+    say "Replacing legacy $container while preserving its mounted data."
+    docker rm -f "$container" >/dev/null
+}
+
+wait_for_app() {
+    say "Waiting for the application health check."
+    local state=""
+    for _ in $(seq 1 90); do
+        state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' daybreak-app 2>/dev/null || true)"
+        if [ "$state" = "healthy" ]; then
+            return
+        fi
+        if [ "$state" = "unhealthy" ] || [ "$state" = "exited" ]; then
+            compose logs --tail=120 app
+            fail "Application startup failed."
+        fi
+        sleep 2
+    done
+    compose logs --tail=120 app
+    fail "Application health check timed out."
+}
+
+wait_for_sandbox() {
+    if [ "${DAYBREAK_BOOTSTRAP_SANDBOX:-true}" != "true" ]; then
+        return
+    fi
+    say "Waiting for the default sandbox."
+    for _ in $(seq 1 60); do
+        if [ -n "$(docker ps -q --filter "ancestor=$DAYBREAK_SANDBOX_IMAGE")" ]; then
+            return
+        fi
+        sleep 2
+    done
+    compose logs --tail=120 app
+    fail "The application is healthy, but the default sandbox did not start."
+}
+
+wait_for_database() {
+    local state=""
+    for _ in $(seq 1 60); do
+        state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' daybreak-postgres 2>/dev/null || true)"
+        if [ "$state" = "healthy" ]; then
+            return
+        fi
+        if [ "$state" = "unhealthy" ] || [ "$state" = "exited" ]; then
+            compose logs --tail=120 postgres
+            fail "Database startup failed."
+        fi
+        sleep 2
+    done
+    compose logs --tail=120 postgres
+    fail "Database health check timed out."
+}
+
+sync_database_password() {
+    local escaped_password="${DAYBREAK_DB_PASSWORD//\'/\'\'}"
+    docker exec daybreak-postgres psql -U root -d daybreak \
+        -c "ALTER ROLE root WITH PASSWORD '$escaped_password';" >/dev/null
+}
+
+cmd_up() {
+    require_docker
+    ensure_env
+    load_env
+
+    case "$(uname -m)" in
+        x86_64|amd64) ;;
+        *) fail "The current sandbox image supports x86_64/amd64 only." ;;
+    esac
+
+    prepare_image "$DAYBREAK_SANDBOX_IMAGE" "$ROOT_DIR/sandbox/Dockerfile" "$ROOT_DIR/sandbox" "sandbox"
+
+    remove_legacy_container daybreak-app
+    remove_legacy_container daybreak-postgres
+
+    say "Starting PostgreSQL."
+    compose up -d postgres
+    wait_for_database
+    sync_database_password
+
+    say "Pulling the Daybreak application image."
+    if docker pull "$DAYBREAK_APP_IMAGE"; then
+        compose up -d --no-build app
+    else
+        say "Published application image is unavailable; building it locally."
+        compose up -d --build app
+    fi
+    wait_for_app
+    wait_for_sandbox
+
+    say "Daybreak is ready."
+    printf '  URL:      http://127.0.0.1:8000\n'
+    printf '  Account:  %s\n' "$DAYBREAK_ADMIN_EMAIL"
+    if [ "$EXISTING_INSTALL" = true ] || [ "$ENV_CREATED" = false ]; then
+        printf '  Password: your existing administrator password (unchanged)\n'
+    else
+        printf '  Password: %s\n' "$DAYBREAK_ADMIN_PASSWORD"
+    fi
+    printf '  Next:     configure the model service, then create or open a project.\n'
+}
+
+cmd_down() {
+    load_env
+    compose down
+    local ids
+    ids="$(docker ps -q --filter "ancestor=$DAYBREAK_SANDBOX_IMAGE")"
+    if [ -n "$ids" ]; then
+        docker stop $ids >/dev/null
+    fi
+    say "Daybreak is stopped. Data volumes were preserved."
+}
+
+cmd_status() {
+    load_env
+    compose ps
+    printf '\nSandbox containers:\n'
+    docker ps -a --filter "ancestor=$DAYBREAK_SANDBOX_IMAGE" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+}
+
+cmd_logs() {
+    load_env
+    compose logs -f --tail=200 app postgres
+}
+
+cmd_restart() {
+    load_env
+    compose restart postgres app
+    wait_for_app
+    say "Daybreak restarted successfully."
+}
+
+case "${1:-up}" in
+    up) cmd_up ;;
+    down) cmd_down ;;
+    restart) cmd_restart ;;
+    status) cmd_status ;;
+    logs) cmd_logs ;;
+    *)
+        printf 'Usage: ./daybreak [up|down|restart|status|logs]\n'
+        exit 2
+        ;;
+esac

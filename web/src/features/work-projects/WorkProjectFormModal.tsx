@@ -1,6 +1,6 @@
 import { Button, Input, InputNumber, Select, Spin, Tag, TextArea } from "@douyinfe/semi-ui";
-import { FolderKanban, Plus, ScanSearch, Server, Trash2, UserRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileArchive, FolderKanban, Plus, ScanSearch, Server, Trash2, Upload, UserRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   WORK_PROJECT_ASSET_ORIGIN,
   getWorkProjectAssetTypes,
@@ -9,7 +9,8 @@ import {
   isWorkProjectType,
   WORK_PROJECT_ASSET_TYPE,
 } from "../../shared/api/contract";
-import { queryAvailableSandboxContainers } from "../../shared/api/sandboxContainers";
+import { queryAvailableSandboxContainers, uploadContainerFiles } from "../../shared/api/sandboxContainers";
+import { showApiError } from "../../shared/api/feedback";
 import { querySystemUsers } from "../../shared/api/systemUsers";
 import type {
   CreateWorkProjectRequest,
@@ -70,6 +71,9 @@ const EMPTY: WorkProjectFormValues = {
 
 export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit }: WorkProjectFormModalProps) {
   const [values, setValues] = useState<WorkProjectFormValues>(EMPTY);
+  const [sourceUploading, setSourceUploading] = useState(false);
+  const [sourceUploadProgress, setSourceUploadProgress] = useState<number | null>(null);
+  const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const loadProjectSandboxContainers = useCallback((params: { page: number; size: number; keyword: string }) => (
     queryAvailableSandboxContainers({
       ...params,
@@ -88,6 +92,8 @@ export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit
 
   useEffect(() => {
     if (!open) return;
+    setSourceUploading(false);
+    setSourceUploadProgress(null);
     setValues(project ? {
       name: project.name,
       description: project.description,
@@ -108,7 +114,57 @@ export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit
     value: container.id,
   })), [sandboxContainers]);
   const canSubmit = Boolean(values.name.trim()) && values.assets.length > 0
-    && values.assets.every(isAssetComplete);
+    && values.assets.every(isAssetComplete) && !sourceUploading;
+  const sourceAsset = values.assets.find((asset) => asset.type === WORK_PROJECT_ASSET_TYPE.BINARY);
+
+  const selectProjectType = (type: WorkProjectFormValues["type"]) => {
+    setValues((current) => ({
+      ...current,
+      type,
+      assets: type === "source_code_audit"
+        ? [{ ...EMPTY_ASSET, type: WORK_PROJECT_ASSET_TYPE.BINARY }]
+        : [{ ...EMPTY_ASSET }],
+    }));
+    setSourceUploadProgress(null);
+  };
+
+  const uploadSourceFile = async (file: File) => {
+    const sandboxContainerId = values.sandbox_container_id;
+    if (typeof sandboxContainerId !== "number") {
+      showApiError(new Error("请先选择沙箱容器"));
+      return;
+    }
+    setSourceUploading(true);
+    setSourceUploadProgress(0);
+    try {
+      const response = await uploadContainerFiles(
+        sandboxContainerId,
+        "/data/target",
+        [file],
+        true,
+        (progress) => setSourceUploadProgress(progress.percent),
+      );
+      const uploaded = response.data?.files[0];
+      if (!uploaded) throw new Error("源码文件上传成功，但未返回文件路径");
+      setValues((current) => ({
+        ...current,
+        name: current.name.trim() || sourceProjectName(file.name),
+        assets: [{
+          type: WORK_PROJECT_ASSET_TYPE.BINARY,
+          path: uploaded.path,
+          host: "",
+          port: null,
+        }],
+      }));
+      setSourceUploadProgress(100);
+    } catch (error) {
+      setSourceUploadProgress(null);
+      showApiError(error);
+    } finally {
+      setSourceUploading(false);
+      if (sourceFileInputRef.current) sourceFileInputRef.current.value = "";
+    }
+  };
 
   const updateAsset = (index: number, patch: Partial<AssetFormRow>) => {
     setValues((current) => ({
@@ -154,7 +210,7 @@ export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit
         <label>
           <span>类型</span>
           <Select prefix={<ScanSearch size={16} />} value={values.type}
-            onChange={(type) => isWorkProjectType(type) && setValues((v) => ({ ...v, type }))}
+            onChange={(type) => isWorkProjectType(type) && selectProjectType(type)}
             optionList={projectTypes.map((type) => ({ label: WORK_PROJECT_TYPE_LABEL[type], value: type }))}
           />
         </label>
@@ -209,7 +265,37 @@ export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit
         />
       </label>
 
-      <section className="project-assets-editor">
+      {values.type === "source_code_audit" ? (
+        <section className="project-source-upload">
+          <header>
+            <span>源码文件</span>
+            {sourceAsset?.path ? <small title={sourceAsset.path}>{sourceAsset.path}</small> : null}
+          </header>
+          <input
+            ref={sourceFileInputRef}
+            type="file"
+            hidden
+            accept=".zip,.7z,.tar,.gz,.tgz,.bz2,.xz"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) void uploadSourceFile(file);
+            }}
+          />
+          <div className="project-source-upload-action">
+            <Button
+              icon={sourceAsset?.path ? <FileArchive size={16} /> : <Upload size={16} />}
+              loading={sourceUploading}
+              disabled={values.sandbox_container_id === null}
+              onClick={() => sourceFileInputRef.current?.click()}
+            >
+              {sourceAsset?.path ? "重新选择源码文件" : "选择源码文件上传"}
+            </Button>
+            {sourceUploadProgress !== null ? (
+              <span>{sourceUploadProgress < 100 ? `上传中 ${sourceUploadProgress}%` : "上传完成"}</span>
+            ) : null}
+          </div>
+        </section>
+      ) : <section className="project-assets-editor">
         <header>
           <span>资产</span>
           <Button
@@ -269,9 +355,13 @@ export function WorkProjectFormModal({ open, saving, project, onCancel, onSubmit
             </article>
           ))}
         </div>
-      </section>
+      </section>}
     </ResourceModal>
   );
+}
+
+function sourceProjectName(filename: string) {
+  return filename.replace(/\.(?:tar\.gz|tar\.bz2|tar\.xz|zip|7z|tar|tgz|gz|bz2|xz)$/i, "");
 }
 
 function UserOption({ user }: { user: SystemUser }) {

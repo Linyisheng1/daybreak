@@ -5,6 +5,7 @@ import {
   RefreshCw, Scissors, Trash2, Upload,
 } from "lucide-react";
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ErrorBoundary } from "../../shared/components/ErrorBoundary";
 import {
   copyContainerFiles, createContainerDirectory, deleteContainerFiles,
   downloadContainerFiles, listContainerFiles, moveContainerFiles, uploadContainerFiles, writeContainerFile,
@@ -36,6 +37,8 @@ export function ContainerFileManager({ containerId }: Props) {
   const [historyIndex, setHistoryIndex] = useState(0);
   const [viewingFile, setViewingFile] = useState<ContainerFileInfo | null>(null);
   const [createType, setCreateType] = useState<"file" | "dir" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadBytes, setUploadBytes] = useState({ loaded: 0, total: 0 });
   const requestIdRef = useRef(0);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -75,6 +78,7 @@ export function ContainerFileManager({ containerId }: Props) {
     setHistoryIndex(0);
     setViewingFile(null);
     setCreateType(null);
+    setUploadProgress(null);
     void loadFiles("/");
   }, [containerId, loadFiles]);
 
@@ -214,11 +218,17 @@ export function ContainerFileManager({ containerId }: Props) {
     event.target.value = "";
     if (uploadFiles.length === 0) return;
 
+    setUploadProgress(0);
+    setUploadBytes({ loaded: 0, total: uploadFiles.reduce((total, file) => total + file.size, 0) });
     await runFileAction(async () => {
-      await uploadContainerFiles(containerId, path, uploadFiles, true);
+      await uploadContainerFiles(containerId, path, uploadFiles, true, (progress) => {
+        setUploadProgress(progress.percent);
+        setUploadBytes({ loaded: progress.loaded, total: progress.total });
+      });
       Toast.success(`${uploadFiles.length} ${UI_TEXT.filesUploaded}`);
       await loadFiles(path);
     });
+    setUploadProgress(null);
   }, [containerId, path, loadFiles, runFileAction]);
 
   const handleDownload = useCallback(async () => {
@@ -345,6 +355,12 @@ export function ContainerFileManager({ containerId }: Props) {
       )}
 
       <div className="file-manager-statusbar">
+        {uploadProgress !== null ? (
+          <span className="file-manager-upload-progress">
+            {uploadProgress < 100 ? `Uploading ${uploadProgress}%` : "Processing upload"}
+            {uploadBytes.total > 0 ? ` - ${formatBytes(uploadBytes.loaded)} / ${formatBytes(uploadBytes.total)}` : ""}
+          </span>
+        ) : null}
         <span>{files.length} 项</span>
         {clipboard && (
           <span className="file-manager-clipboard-hint">
@@ -355,13 +371,15 @@ export function ContainerFileManager({ containerId }: Props) {
 
       {viewingFile ? (
         <div className="file-manager-viewer-overlay">
-          <Suspense fallback={<div className="file-manager-loading">加载查看器...</div>}>
-            <FileViewer
-              containerId={containerId}
-              file={viewingFile}
-              onClose={() => setViewingFile(null)}
-            />
-          </Suspense>
+          <ErrorBoundary compact>
+            <Suspense fallback={<div className="file-manager-loading">加载查看器...</div>}>
+              <FileViewer
+                containerId={containerId}
+                file={viewingFile}
+                onClose={() => setViewingFile(null)}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       ) : null}
     </div>

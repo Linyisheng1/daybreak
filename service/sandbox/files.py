@@ -2,7 +2,7 @@ import json as json_module
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from dataclasses import dataclass
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 import httpx
 
@@ -11,6 +11,7 @@ from service.sandbox.control_proxy import SandboxControlProxyTarget, resolve_san
 
 
 _http_client: httpx.AsyncClient | None = None
+_UPLOAD_TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=None, pool=30.0)
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,7 @@ async def upload_container_files(
 ) -> list[ContainerFileUploadItem]:
     files = []
     try:
+        await _request_json(container_id, "POST", "/files/mkdir", json={"path": path})
         for source in sources:
             files.append(("files", (source.filename, source.stream, "application/octet-stream")))
         payload = await _request_json(
@@ -86,6 +88,7 @@ async def upload_container_files(
             "/files/upload",
             data={"path": path, "overwrite": str(overwrite).lower()},
             files=files,
+            timeout=_UPLOAD_TIMEOUT,
         )
     finally:
         for source in sources:
@@ -153,18 +156,24 @@ async def _request_json(
     json: dict | None = None,
     data: dict | None = None,
     files: list | None = None,
+    timeout: httpx.Timeout | None = None,
 ) -> dict:
     target = await _resolve_running_target(container_id)
     if target is None:
         raise FileNotFoundError("sandbox container not found")
+    request_options: dict[str, Any] = {
+        "params": params,
+        "json": json,
+        "data": data,
+        "files": files,
+        "headers": sandbox_control_proxy_token_headers(target),
+    }
+    if timeout is not None:
+        request_options["timeout"] = timeout
     response = await _get_http_client().request(
         method,
         f"{target.base_url}{path}",
-        params=params,
-        json=json,
-        data=data,
-        files=files,
-        headers=sandbox_control_proxy_token_headers(target),
+        **request_options,
     )
     _raise_for_control_proxy_response(response)
     try:

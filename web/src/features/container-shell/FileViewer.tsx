@@ -4,6 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { downloadContainerFiles, readContainerFile, writeContainerFile } from "../../shared/api/sandboxContainers";
 import { showApiError } from "../../shared/api/feedback";
 import type { ContainerFileInfo } from "../../shared/api/types";
+import { ErrorBoundary } from "../../shared/components/ErrorBoundary";
 import { UI_TEXT } from "../../shared/lib/uiText";
 
 const CodeEditor = lazy(() => import("./CodeEditor").then((module) => ({ default: module.CodeEditor })));
@@ -167,13 +168,15 @@ export function FileViewer({ containerId, file, onClose }: Props) {
         editing ? (
           <div className="fv-editor">
             <div className="fv-editor-cm">
-              <Suspense fallback={<div className="fv-loading">加载编辑器...</div>}>
-                <CodeEditor
-                  value={editContent}
-                  onChange={setEditContent}
-                  filename={file.name}
-                />
-              </Suspense>
+              <ErrorBoundary compact>
+                <Suspense fallback={<div className="fv-loading">加载编辑器...</div>}>
+                  <CodeEditor
+                    value={editContent}
+                    onChange={setEditContent}
+                    filename={file.name}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
             <div className="fv-editor-actions">
               <Button icon={<Save size={14} />} size="small" type="primary" loading={saving} onClick={() => void handleSave()}>{UI_TEXT.save}</Button>
@@ -182,13 +185,15 @@ export function FileViewer({ containerId, file, onClose }: Props) {
           </div>
         ) : (
           <div className="fv-preview">
-            <Suspense fallback={<div className="fv-loading">加载预览...</div>}>
-              <CodeEditor
-                value={content}
-                readOnly
-                filename={file.name}
-              />
-            </Suspense>
+            <ErrorBoundary compact>
+              <Suspense fallback={<div className="fv-loading">加载预览...</div>}>
+                <CodeEditor
+                  value={content}
+                  readOnly
+                  filename={file.name}
+                />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         )
       ) : (

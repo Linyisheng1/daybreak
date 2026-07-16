@@ -87,6 +87,15 @@ class AgentRuntimeConfig(StrictConfigModel):
     context_compression_summary_max_tokens: int = Field(default=8000, ge=512)
 
 
+# session health config
+class SessionHealthConfig(StrictConfigModel):
+    max_messages_per_session: int = Field(default=500, ge=50)
+    llm_retry_max_attempts: int = Field(default=3, ge=1, le=10)
+    llm_retry_base_delay_seconds: float = Field(default=1.0, ge=0.1, le=60.0)
+    llm_retry_max_delay_seconds: float = Field(default=30.0, ge=1.0, le=300.0)
+    context_window_sanity_cap: int = Field(default=512000, ge=131072)
+
+
 # global config
 class GlobalConfig(StrictConfigModel):
     system: SystemConfig = Field(default_factory=SystemConfig)
@@ -94,6 +103,7 @@ class GlobalConfig(StrictConfigModel):
     agents: dict[str, AgentConfig] = Field(default_factory=dict)
     agent_pool: AgentPoolConfig = Field(default_factory=AgentPoolConfig)
     agent_runtime: AgentRuntimeConfig = Field(default_factory=AgentRuntimeConfig)
+    session_health: SessionHealthConfig = Field(default_factory=SessionHealthConfig)
 
 
 ###

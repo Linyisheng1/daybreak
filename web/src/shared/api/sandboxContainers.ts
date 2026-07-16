@@ -1,4 +1,4 @@
-import { apiBlob, apiDelete, apiForm, apiGet, apiPatch, apiPost, buildAuthenticatedWebSocketUrl } from "./client";
+import { apiBlob, apiDelete, apiFormWithProgress, apiGet, apiPatch, apiPost, buildAuthenticatedWebSocketUrl, type UploadProgress } from "./client";
 import { SANDBOX_CONTAINER_STATUS } from "./generated/constants";
 import { getStoredAccessToken } from "../auth/session";
 import { buildQuery } from "./query";
@@ -139,12 +139,17 @@ export function uploadContainerFiles(
   path: ContainerFileUploadRequest["path"],
   files: File[],
   overwrite: ContainerFileUploadRequest["overwrite"] = true,
+  onProgress: (progress: UploadProgress) => void = () => undefined,
 ) {
   const form = new FormData();
   form.set("path", path);
   form.set("overwrite", String(overwrite));
   files.forEach((file) => form.append("files", file));
-  return apiForm<ContainerFileUploadResponse>(`${SANDBOX_CONTAINERS_PATH}/${id}/files/upload`, form);
+  return apiFormWithProgress<ContainerFileUploadResponse>(
+    `${SANDBOX_CONTAINERS_PATH}/${id}/files/upload`,
+    form,
+    onProgress,
+  );
 }
 
 export function downloadContainerFiles(id: number, params: DownloadContainerFilesParams) {

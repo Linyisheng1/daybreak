@@ -15,6 +15,12 @@ type RawRequestOptions = {
   auth?: boolean;
 };
 
+export type UploadProgress = {
+  loaded: number;
+  total: number;
+  percent: number;
+};
+
 export class ApiError extends Error {
   readonly status: number;
   readonly response?: CommonResponsePayload;
@@ -119,6 +125,49 @@ export async function apiForm<ResponsePayload>(path: string, body: FormData, aut
   const parsed = await parseJsonResponse(response);
   parseCommonResponseError(response, parsed);
   return parsed as ResponsePayload;
+}
+
+export function apiFormWithProgress<ResponsePayload>(
+  path: string,
+  body: FormData,
+  onProgress: (progress: UploadProgress) => void,
+  auth = true,
+) {
+  return new Promise<ResponsePayload>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", path);
+    request.setRequestHeader("Accept", "application/json");
+
+    if (auth) {
+      const token = getStoredAccessToken();
+      if (token) request.setRequestHeader(ACCESS_TOKEN_HEADER, token);
+    }
+
+    request.upload.addEventListener("progress", (event) => {
+      const total = event.lengthComputable ? event.total : 0;
+      const percent = total > 0 ? Math.min(100, Math.round((event.loaded / total) * 100)) : 0;
+      onProgress({ loaded: event.loaded, total, percent });
+    });
+    request.addEventListener("error", () => reject(new ApiError(0, { code: 0, message: "Network request failed" })));
+    request.addEventListener("abort", () => reject(new ApiError(0, { code: 0, message: "Upload canceled" })));
+    request.addEventListener("load", () => {
+      let parsed: unknown;
+      try {
+        parsed = request.responseText ? JSON.parse(request.responseText) : undefined;
+      } catch {
+        parsed = undefined;
+      }
+      const payload = isCommonResponsePayload(parsed) ? parsed : undefined;
+      const payloadCode = typeof payload?.code === "number" ? payload.code : request.status;
+      if (request.status < 200 || request.status >= 300 || payloadCode >= 400) {
+        handleAuthExpired(request.status, payloadCode);
+        reject(new ApiError(request.status, payload));
+        return;
+      }
+      resolve(parsed as ResponsePayload);
+    });
+    request.send(body);
+  });
 }
 
 export async function apiBlob(path: string, auth = true) {

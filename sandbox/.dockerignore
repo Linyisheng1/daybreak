@@ -2,6 +2,8 @@
 
 !Dockerfile
 !entrypoint.sh
+!start-browser.sh
+!healthcheck.sh
 !supervisord.conf
 !proxy/
 !proxy/go.mod

@@ -552,6 +552,47 @@
   font-size: 13px;
 }
 
+.project-source-upload {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.project-source-upload > header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-source-upload > header > span {
+  flex: 0 0 auto;
+  color: var(--z-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-source-upload > header > small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--z-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-source-upload-action {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-source-upload-action > span {
+  color: var(--z-text-subtle);
+  font-size: 12px;
+}
+
 .project-assets-rows {
   display: grid;
   gap: 10px;

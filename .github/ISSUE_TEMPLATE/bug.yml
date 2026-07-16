@@ -1,0 +1,71 @@
+name: Bug report
+description: 报告可复现的问题，帮助 Daybreak 变得更稳定
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。提交前请移除 API Key、密码、目标地址、漏洞证据等敏感信息。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 问题模块
+      options:
+        - 工作台与智能体
+        - 项目与拓扑图
+        - 沙箱与远程桌面
+        - 主机与出口代理
+        - 报告生成
+        - 安装与部署
+        - 文档
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？你原本期望发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开...
+        2. 点击...
+        3. 观察到...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Daybreak 版本
+      placeholder: v0.1.0 或 commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、CPU 架构、Docker/浏览器版本和部署方式
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 请先清理凭据、Cookie、目标信息和其他敏感数据
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交确认
+      options:
+        - label: 我已搜索现有 Issue，未发现相同问题
+          required: true
+        - label: 我已从日志和截图中移除敏感信息
+          required: true

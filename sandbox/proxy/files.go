@@ -122,6 +122,10 @@ func handleUploadFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	path := normalizePath(r.FormValue("path"))
 	overwrite := r.FormValue("overwrite") != "false"
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		writeFileError(w, err)
+		return
+	}
 	uploaded := []uploadItem{}
 	for _, headers := range r.MultipartForm.File {
 		for _, header := range headers {

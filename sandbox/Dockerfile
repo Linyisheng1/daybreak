@@ -16,10 +16,36 @@ RUN go build -trimpath -ldflags='-s -w' -o /sandbox-proxy .
 
 FROM ghcr.io/astral-sh/uv:latest AS uv-bin
 
-# Download and normalize agent-browser assets.
-# agent-browser builder SKIPPED - GitHub HTTPS unavailable during build
+# Download and normalize agent-browser assets. Browser automation is a core
+# sandbox capability, so a missing binary or extension must fail the build.
 FROM debian:trixie-slim AS agent-browser-builder
-RUN mkdir -p /opt/agent-browser/bin /opt/agent-browser/chrome-extension && echo '#!/bin/sh' > /opt/agent-browser/bin/agent-browser-cli && chmod 755 /opt/agent-browser/bin/agent-browser-cli && echo '{}' > /opt/agent-browser/chrome-extension/manifest.json
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG AGENT_BROWSER_VERSION
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl tar unzip; \
+    mkdir -p \
+      /opt/agent-browser/bin \
+      /opt/agent-browser/chrome-extension \
+      /tmp/agent-browser-cli \
+      /tmp/agent-browser-extensions; \
+    curl -4 --connect-timeout 15 --max-time 180 --retry 4 --retry-all-errors -fsSL \
+      "https://github.com/sleepinginsummer/agent-browser-cli/releases/download/v${AGENT_BROWSER_VERSION}/chrome-extensions.zip" \
+      -o /tmp/chrome-extensions.zip; \
+    unzip -q /tmp/chrome-extensions.zip -d /tmp/agent-browser-extensions; \
+    extension_dir="$(find /tmp/agent-browser-extensions -type f -name manifest.json -printf '%h\n' | sort | head -n 1)"; \
+    test -n "$extension_dir"; \
+    cp -a "$extension_dir"/. /opt/agent-browser/chrome-extension; \
+    curl -4 --connect-timeout 15 --max-time 180 --retry 4 --retry-all-errors -fsSL \
+      "https://github.com/sleepinginsummer/agent-browser-cli/releases/download/v${AGENT_BROWSER_VERSION}/sleepinsummer-agent-browser-cli-linux-x64-${AGENT_BROWSER_VERSION}.tgz" \
+      -o /tmp/agent-browser-cli.tgz; \
+    tar -xzf /tmp/agent-browser-cli.tgz -C /tmp/agent-browser-cli; \
+    install -m 755 /tmp/agent-browser-cli/package/bin/agent-browser-cli /opt/agent-browser/bin/agent-browser-cli; \
+    /opt/agent-browser/bin/agent-browser-cli --help >/dev/null; \
+    test -s /opt/agent-browser/chrome-extension/manifest.json; \
+    rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/* /var/cache/apt/*
 # Download and trim Ghidra separately so final image layers do not retain
 # build-only tools or archive caches.
 # Ghidra builder SKIPPED - GitHub HTTPS unavailable during build
@@ -163,10 +189,10 @@ RUN set -eux; \
     whois --version; \
     x11vnc -version; \
     chromium --version; \
-    # agent-browser-cli --help >/dev/null;  # SKIPPED (network) \
+    agent-browser-cli --help >/dev/null; \
     command -v websockify; \
-    # test -f /opt/agent-browser/chrome-extension/manifest.json;  # SKIPPED (network) \
-    # test -x /opt/agent-browser/bin/agent-browser-cli;  # SKIPPED (network) \
+    test -s /opt/agent-browser/chrome-extension/manifest.json; \
+    test -x /opt/agent-browser/bin/agent-browser-cli; \
     # test -x /opt/ghidra/ghidraRun;  # SKIPPED (network) \
     # test -x /opt/ghidra/support/analyzeHeadless;  # SKIPPED (network) \
     test -x /opt/jadx/bin/jadx
@@ -174,7 +200,10 @@ RUN set -eux; \
 COPY --from=proxy-builder --chmod=755 /sandbox-proxy /usr/local/bin/sandbox-proxy
 COPY --from=skills-validator /tmp/.agents/skills .agents/skills
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
+COPY --chmod=755 start-browser.sh /usr/local/bin/start-browser
+COPY --chmod=755 healthcheck.sh /usr/local/bin/sandbox-healthcheck
 COPY supervisord.conf /supervisord.conf
 
 EXPOSE 8000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 CMD ["/usr/local/bin/sandbox-healthcheck"]
 ENTRYPOINT ["/entrypoint.sh"]
