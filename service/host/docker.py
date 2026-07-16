@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from ipaddress import ip_address, IPv6Address
+import os
 from pathlib import Path
 import re
 import shutil
@@ -60,6 +61,10 @@ class DirectDockerAPIClient(APIClient):
 
 
 def _docker_base_url(host: ManagedHost) -> str:
+    if host.id == 1 and host.ip_address in {"127.0.0.1", "::1"}:
+        socket_path = os.getenv("DAYBREAK_DOCKER_SOCKET", "/var/run/docker.sock").strip()
+        if socket_path:
+            return f"unix://{socket_path}"
     address = ip_address(host.ip_address)
     host_address = f"[{address}]" if isinstance(address, IPv6Address) else str(address)
     return f"tcp://{host_address}:{host.docker_management_port}"

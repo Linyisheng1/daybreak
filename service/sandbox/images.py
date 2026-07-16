@@ -37,6 +37,25 @@ async def create_sandbox_image(
     return sandbox_image
 
 
+async def ensure_sandbox_image(
+    image_name: str,
+    control_proxy_port: int = 8000,
+    supports_tor: bool = False,
+) -> SandboxImage:
+    async with get_async_session() as session:
+        existing = (
+            await session.exec(select(SandboxImage).where(SandboxImage.image_name == image_name).limit(1))
+        ).first()
+        if existing is not None:
+            return existing
+
+    return await create_sandbox_image(
+        image_name=image_name,
+        control_proxy_port=control_proxy_port,
+        supports_tor=supports_tor,
+    )
+
+
 async def delete_sandbox_image(id: int) -> DeleteSandboxImageResult:
     async with get_async_session() as session:
         sandbox_image = await session.get(SandboxImage, id)

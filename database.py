@@ -1,4 +1,5 @@
 from agents.extensions.memory import SQLAlchemySession
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -72,7 +73,14 @@ def init_engine() -> None:
 
     cfg = get_config()
     db = cfg.database
-    dsn = f"postgresql+asyncpg://{db.username}:{db.password}@{db.host}:{db.port}/{db.database}"
+    dsn = URL.create(
+        drivername="postgresql+asyncpg",
+        username=db.username,
+        password=db.password,
+        host=db.host,
+        port=db.port,
+        database=db.database,
+    )
 
     _engine = create_async_engine(
         url=dsn,

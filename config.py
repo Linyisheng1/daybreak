@@ -1,5 +1,8 @@
 import json
+import os
 import secrets
+import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -7,8 +10,20 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-ROOT_PATH = Path(__file__).resolve().parent
-WORKSPACE = ROOT_PATH / ".daybreak"
+ROOT_PATH = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)).resolve()
+
+
+def _default_data_root() -> Path:
+    configured = os.getenv("DAYBREAK_DATA_DIR", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return ROOT_PATH
+
+
+DATA_ROOT = _default_data_root()
+WORKSPACE = DATA_ROOT / ".daybreak"
 CONFIG_FILE = WORKSPACE / "config.json"
 
 
@@ -117,6 +132,7 @@ def load_config():
     """load config from json file"""
     global _cfg
 
+    ensure_runtime_workspace()
     next_cfg = read_config_file()
     for field_name in type(_cfg).model_fields:
         setattr(_cfg, field_name, getattr(next_cfg, field_name))
@@ -128,11 +144,42 @@ def get_config():
     return _cfg
 
 
+def ensure_runtime_workspace() -> None:
+    """Initialize persistent runtime files from bundled defaults on first start."""
+    WORKSPACE.mkdir(parents=True, exist_ok=True)
+    if not CONFIG_FILE.exists():
+        source = _first_existing_path(
+            DATA_ROOT / "daybreak-defaults" / "config.json",
+            ROOT_PATH / "daybreak-defaults" / "config.json",
+            ROOT_PATH / ".daybreak" / "config.json.example",
+            ROOT_PATH / "daybreak-persist" / "config.json",
+        )
+        if source is None:
+            raise FileNotFoundError("bundled Daybreak config template was not found")
+        shutil.copy2(source, CONFIG_FILE)
+
+    agents_path = WORKSPACE / "agents"
+    if not agents_path.exists():
+        source = _first_existing_path(
+            DATA_ROOT / "daybreak-defaults" / "agents",
+            ROOT_PATH / "daybreak-defaults" / "agents",
+            ROOT_PATH / "daybreak-persist" / "agents",
+        )
+        if source is None:
+            raise FileNotFoundError("bundled Daybreak agent defaults were not found")
+        shutil.copytree(source, agents_path)
+
+
+def _first_existing_path(*paths: Path) -> Path | None:
+    return next((path for path in paths if path.exists()), None)
+
+
 def read_config_file() -> GlobalConfig:
     """read and validate config.json without mutating global state"""
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
     data = _migrate_config_data(data)
+    data = _apply_environment_overrides(data)
     return GlobalConfig.model_validate(data)
 
 
@@ -167,3 +214,46 @@ def _migrate_config_data(data: dict[str, Any]) -> dict[str, Any]:
     if runtime.get("context_compression_trigger_ratio") == _LEGACY_CONTEXT_COMPRESSION_TRIGGER_RATIO:
         runtime["context_compression_trigger_ratio"] = default_runtime.context_compression_trigger_ratio
     return data
+
+
+def _apply_environment_overrides(data: dict[str, Any]) -> dict[str, Any]:
+    """Apply deployment environment values without persisting secrets to the template."""
+    system = data.setdefault("system", {})
+    bootstrap = system.setdefault("bootstrap_admin", {})
+    database = data.setdefault("database", {})
+
+    _set_env(system, "listen_addr", "DAYBREAK_LISTEN_ADDR")
+    _set_env(system, "listen_port", "DAYBREAK_APP_PORT", int)
+    _set_env(system, "encrypt_key", "DAYBREAK_ENCRYPT_KEY")
+    _set_env(bootstrap, "username", "DAYBREAK_ADMIN_USERNAME")
+    _set_env(bootstrap, "email", "DAYBREAK_ADMIN_EMAIL")
+    _set_env(bootstrap, "password", "DAYBREAK_ADMIN_PASSWORD")
+    _set_env(database, "host", "DAYBREAK_DB_HOST")
+    _set_env(database, "port", "DAYBREAK_DB_PORT", int)
+    _set_env(database, "database", "DAYBREAK_DB_NAME")
+    _set_env(database, "username", "DAYBREAK_DB_USER")
+    _set_env(database, "password", "DAYBREAK_DB_PASSWORD")
+
+    model_overrides = {
+        "base_url": os.getenv("DAYBREAK_MODEL_BASE_URL", "").strip(),
+        "api_key": os.getenv("DAYBREAK_MODEL_API_KEY", "").strip(),
+        "model": os.getenv("DAYBREAK_MODEL_NAME", "").strip(),
+    }
+    for agent in data.get("agents", {}).values():
+        if not isinstance(agent, dict):
+            continue
+        for key, value in model_overrides.items():
+            if value:
+                agent[key] = value
+    return data
+
+
+def _set_env(
+    target: dict[str, Any],
+    key: str,
+    variable: str,
+    convert: type = str,
+) -> None:
+    value = os.getenv(variable, "").strip()
+    if value:
+        target[key] = convert(value)

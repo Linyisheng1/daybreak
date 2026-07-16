@@ -19,6 +19,7 @@ __pycache__/
 web/dist-app/
 web/dist-landing/
 dist-app/
+release/
 daybreak-persist/dist-app/
 daybreak-persist/dist-landing/
 

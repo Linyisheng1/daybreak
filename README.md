@@ -38,89 +38,71 @@
 
 ## 快速开始
 
-### Docker 一键部署（推荐）
+### Linux 二进制部署（推荐）
 
-```bash
-git clone https://github.com/Linyisheng1/daybreak.git && cd daybreak
-docker compose -f docker/docker-compose.yml up -d
+支持 Ubuntu、Debian、CentOS、RHEL 及其他使用 Docker Engine 的 `x86_64/amd64` Linux。发行包应包含：
+
+```text
+daybreak.bin
+daybreak
+daybreak-defaults/
+deploy/docker-compose.dependencies.yml
+.env.example
 ```
 
-访问 **http://127.0.0.1:8000** — 账号 `admin@daybreak.local` / 密码 `admin`
-
-### 手动部署
+首次运行：
 
 ```bash
-pip install -r requirements.txt && pip install python-docx==1.1.2
-docker run -d --name daybreak-postgres -e POSTGRES_USER=root -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=daybreak -p 5432:5432 postgres:16-alpine
-cd web && npm ci && npx vite build --config vite.app.config.ts && cd ..
-cp config.json.example .daybreak/config.json   # 编辑填入 API Key
-python main.py
+chmod +x daybreak daybreak.bin
+./daybreak doctor
+./daybreak up
 ```
 
-## Docker
+启动器会生成 `.env` 中的随机管理员密码、数据库密码和加密密钥，拉取 PostgreSQL 与沙箱镜像，启动数据库和 `daybreak.bin`，并等待健康检查通过。访问 **http://127.0.0.1:8000**，管理员密码保存在 `.env` 的 `DAYBREAK_ADMIN_PASSWORD` 中。
+
+Docker 尚未安装时：
 
 ```bash
-# 启动
-docker compose -f docker/docker-compose.yml up -d
-
-# 查看日志
-docker compose -f docker/docker-compose.yml logs -f app
-
-# 停止
-docker compose -f docker/docker-compose.yml down
-
-# 重新构建（修改代码后）
-docker compose -f docker/docker-compose.yml up -d --build
-
-# 停止并删除数据
-docker compose -f docker/docker-compose.yml down -v
+./daybreak install-docker
+./daybreak fix-permissions
+# 退出当前 Linux 会话并重新登录后
+./daybreak up
 ```
 
-数据通过 Docker 命名卷持久化：
+如果沙箱镜像位于私有 GHCR Package，先运行 `./daybreak registry-login`，使用具备 `read:packages` 权限的 GitHub Token 登录。
 
-| 卷名 | 用途 |
+## 部署管理
+
+```bash
+./daybreak up       # 拉取依赖并启动
+./daybreak status   # 查看应用、数据库和沙箱镜像状态
+./daybreak logs     # 查看应用与数据库日志
+./daybreak restart  # 重启
+./daybreak down     # 停止，保留数据库数据
+./daybreak doctor   # 检查架构、Docker、Compose、Socket 和二进制
+```
+
+部署职责如下：
+
+| 组件 | 运行位置 | 说明 |
 | --- | --- |
-| `daybreak-config` | 配置文件 |
-| `daybreak-pgdata` | PostgreSQL 数据 |
-| `daybreak-reports` | 生成的报告文件 |
+| `daybreak.bin` | Linux 宿主机 | Daybreak 后端和前端 |
+| PostgreSQL | Compose 容器 | 使用 `daybreak-pgdata` 持久卷 |
+| 沙箱镜像 | Docker 本地镜像 | Daybreak 按项目动态创建沙箱容器 |
+| `.env` | 安装目录 | 唯一部署参数来源，权限默认为 `600` |
+| `.daybreak/` | 安装目录 | 运行配置、Agent 文件、日志和 PID |
 
 ## 配置说明
 
-首次使用需编辑 `.daybreak/config.json`，参考 `config.json.example`：
+`.env` 同时驱动 PostgreSQL Compose 和 Daybreak 运行时配置，数据库密码不会再维护两份。修改模型配置后运行 `./daybreak restart`：
 
-```json
-{
-  "system": {
-    "listen_addr": "0.0.0.0",
-    "listen_port": 8000,
-    "encrypt_key": "替换为至少32位随机字符串",
-    "bootstrap_admin": {
-      "enabled": true,
-      "username": "admin",
-      "email": "admin@daybreak.local",
-      "password": "admin"
-    }
-  },
-  "database": {
-    "host": "127.0.0.1",
-    "port": 5432,
-    "database.*daybreak",
-    "username": "root",
-    "password": "123456"
-  },
-  "agents": {
-    "lead": {
-      "code": "cso",
-      "name": "破晓",
-      "base_url": "你的模型API地址",
-      "api_key": "你的API密钥",
-      "model": "你的模型名称"
-    }
-  }
-}
+```dotenv
+DAYBREAK_MODEL_BASE_URL=https://api.example.com/v1
+DAYBREAK_MODEL_API_KEY=replace-with-your-api-key
+DAYBREAK_MODEL_NAME=your-model-name
 ```
 
-> :lock: **切勿将 `config.json` 提交到版本控制，该文件包含 API 密钥。** `.gitignore` 已将其排除。
+> :lock: **切勿提交 `.env` 或 `.daybreak/config.json`。** 两者均可能包含 API Key、数据库密码和管理员凭据，仓库已经将其排除。
 
 ## 总体架构
 
@@ -253,14 +235,15 @@ docs/            VitePress 文档
 ## 常用命令
 
 ```bash
-# Docker
-docker compose -f docker/docker-compose.yml up -d        # 启动
-docker compose -f docker/docker-compose.yml logs -f app  # 日志
-docker compose -f docker/docker-compose.yml down         # 停止
+# 二进制发行版
+./daybreak up
+./daybreak status
+./daybreak logs
+./daybreak down
 
-# 手动
-python main.py                  # 启动服务
-tail -f .daybreak/app.log           # 查看日志
+# 源码开发
+python main.py
+tail -f .daybreak/app.log
 
 # 前端开发
 cd web && npm run dev           # 开发模式

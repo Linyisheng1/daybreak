@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import os
 
 from agents import set_tracing_disabled
 from fastapi import FastAPI
@@ -37,6 +38,7 @@ from service.agent.recovery import recover_pending_sessions
 from service.host.hosts import ensure_local_managed_host
 from service.sandbox.control_proxy import close_control_proxy_http_client
 from service.sandbox.files import close_file_http_client
+from service.sandbox.images import ensure_sandbox_image
 from service.sandbox.novnc import close_novnc_http_client
 from service.sandbox.status import (
     invalidate_all_agent_tool_bindings,
@@ -80,6 +82,14 @@ async def _bootstrap_local_host() -> None:
     logger.debug("default local host ensured: %s", host.id)
 
 
+async def _bootstrap_sandbox_image() -> None:
+    image_name = os.getenv("DAYBREAK_SANDBOX_IMAGE", "").strip()
+    if not image_name:
+        return
+    image = await ensure_sandbox_image(image_name)
+    logger.debug("default sandbox image ensured: %s", image.id)
+
+
 def _mount_frontend(app: FastAPI) -> None:
     """serve built frontend assets when web/dist-app exists"""
     index_path = WEB_DIST_PATH / "index.html"
@@ -105,6 +115,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         await create_all_tables()
         await _bootstrap_admin_user()
         await _bootstrap_local_host()
+        await _bootstrap_sandbox_image()
 
         set_tracing_disabled(True)
         await start_async_sandbox_runtime()

@@ -5,177 +5,141 @@ editLink: true
 
 # Quick Start
 
-破晓 Daybreak's core philosophy is to pursue extreme simplicity as much as possible, so 破晓 Daybreak's deployment also keeps the steps as simple as possible.
+The recommended deployment runs `daybreak.bin` on the Linux host, PostgreSQL under Compose, and project sandboxes as Docker containers managed dynamically by Daybreak. Python, Node.js, and local frontend builds are not required.
 
-> :warning: Iteration Notice
->
-> 破晓 Daybreak is currently in a phase of rapid iteration and may undergo major structural or contract changes. To ensure code quality, forward compatibility is not considered for now. When using it in production, proper version control is recommended, and historical data may require additional migration measures.
+## Requirements
 
-## Before You Start
-
-### Basic Configuration
-
-破晓 Daybreak requires only the following core content and infrastructure to run:
-
-| Item | Description |
+| Item | Requirement |
 | --- | --- |
-| `.daybreak/config.json` | System runtime configuration |
-| `.daybreak/agents/*` | Agent configuration information |
-| `Sandbox` | Customized sandbox environment |
-| `Docker` | Sandbox environment runtime |
-| `PostgreSQL` | Persistent data storage |
+| Operating system | Ubuntu, Debian, CentOS, RHEL, or compatible Linux |
+| Architecture | `x86_64/amd64` |
+| Container runtime | Docker Engine with Docker Compose v2 |
+| Permission | The current user can read and write the Docker socket |
+| Network | Access to Docker Hub, GHCR, and the configured model API |
+| Suggested resources | 4 CPU cores, 8 GB RAM, and 20 GB free disk space |
 
-Get the latest code from GitHub:
+The current sandbox image supports amd64 only. WSL2 with Docker integration is supported but not required.
 
-```bash
-git clone https://github.com/Linyisheng1/daybreak.git && cd daybreak
-```
+## Release Layout
 
-### Build the Sandbox
-
-破晓 Daybreak's capabilities are deeply tied to the sandbox environment, so you need to build the corresponding sandbox image:
-
-> :warning: Architecture Limitation
->
-> The sandbox image build currently supports only the x64/amd64 architecture. arm64/Apple Silicon, including Apple Silicon Macs, is not supported. Run this step on an x64 host or in an x64 build environment.
-
-```bash
-cd sandbox && bash build.sh
-```
-
-After a short wait, you will get `sandbox-runtime:latest`. On first use, you also need to add the corresponding image record to the system.
-
-## Production Environment
-
-When deploying to production, follow these steps one by one.
-
-### Prepare Configuration
-
-```bash
-cp .daybreak/config.json.example .daybreak/config.json
-```
-
-Edit the system runtime configuration in `.daybreak/config.json`, mainly updating the following items:
-
-| Item | Description |
-| --- | --- |
-| `system.encrypt_key` | System data encryption key. This must be changed. A random string of at least 32 bytes is recommended. |
-| `system.bootstrap_admin` | Default system administrator information. This must be changed. A strong password is recommended. |
-| `database` | System database connection information. When deploying with Docker Compose, set `host` to the corresponding service name. |
-| `agents.*` | LLM API configuration for each agent. Different providers and models can be configured separately as needed. |
-
-### Start Containers
-
-Once everything is ready, start 破晓 Daybreak with one command:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### Reverse Proxy (Optional)
-
-By default, the service listens on `0.0.0.0:8000`. You can configure it to listen on `127.0.0.1:8000` as needed and set up a reverse proxy.
-
-An example Nginx configuration is shown below:
+The extracted release should contain:
 
 ```text
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    '' close;
-}
-
-server {
-    listen 10000 ssl default_server;
-
-    ssl_certificate     /etc/nginx/ssl/vps.crt;
-    ssl_certificate_key /etc/nginx/ssl/vps.key;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
-
-    auth_basic "Origin Restricted";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        proxy_buffering off;
-    }
-}
+daybreak.bin
+daybreak
+daybreak-defaults/
+.env.example
+deploy/docker-compose.dependencies.yml
 ```
 
-## Development Environment
-
-When deploying in a development environment, follow these steps one by one.
-
-### Configure the Environment
-
-- Python version: 3.13.5
-- Node.js version: 24.16.0
-
-Create a virtual environment with the following commands:
+Make the launcher and binary executable:
 
 ```bash
-python -m venv .venv
-
-# Windows:
-.venv\Scripts\Activate.ps1
-
-# Linux:
-source .venv/bin/activate
+chmod +x daybreak daybreak.bin
 ```
 
-Install system dependencies:
+## Preflight Check
 
 ```bash
-pip install -r requirements.txt
+./daybreak doctor
 ```
+
+This command does not modify the host. It checks the Linux architecture, Docker CLI and API, Compose v2, Docker socket permission, and application binary.
+
+### Docker is missing
+
+For a quick evaluation installation, the launcher can invoke Docker's official convenience installer:
 
 ```bash
-cd web && npm install
+./daybreak install-docker
 ```
 
-Build the frontend project:
+For production, install Docker from the official Ubuntu/Debian APT repository or CentOS/RHEL RPM repository instead.
+
+### Docker permission is denied
 
 ```bash
-cd web && npm run build
+./daybreak fix-permissions
 ```
 
-Create the database:
+Sign out of the Linux session and sign back in before running `./daybreak doctor` again. Do not expose an unauthenticated Docker API on TCP port 2375. Local Daybreak deployments use `/var/run/docker.sock`.
 
-Use `docker-compose.dev.yml` to start the database environment with one command:
+### GHCR access is denied
+
+Public packages require no login. For a private GHCR package, run:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+./daybreak registry-login
 ```
 
-Visit `127.0.0.1:5433`, log in with the configured pgAdmin username and password, enter the PostgreSQL connection information, and connect to the service.
+Enter a GitHub username and token with `read:packages`. The token is passed to Docker over standard input and is not stored in `.env`.
 
-Create the `daybreak` database. The database name must match the value configured in `config.json`.
-
-### Start the Project
-
-Create `.daybreak/config.json` and fill in the relevant information based on the example in `.daybreak/config.json.example`.
-
-Start the project with the following command:
+## First Start
 
 ```bash
-python main.py
+./daybreak up
 ```
 
-By default, the service listens on `0.0.0.0:8000`. Visit `http://127.0.0.1:8000/` to access it.
+The launcher creates `.env` with mode `600`, generates deployment secrets, pulls PostgreSQL and the sandbox image, starts and validates PostgreSQL, synchronizes its password, starts `daybreak.bin`, initializes runtime files, registers the sandbox image, and waits for the HTTP health check.
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+The administrator email and generated password are stored in `.env` as `DAYBREAK_ADMIN_EMAIL` and `DAYBREAK_ADMIN_PASSWORD`.
+
+## Model Configuration
+
+Edit `.env`:
+
+```dotenv
+DAYBREAK_MODEL_BASE_URL=https://api.example.com/v1
+DAYBREAK_MODEL_API_KEY=replace-with-your-api-key
+DAYBREAK_MODEL_NAME=your-model-name
+```
+
+Apply the change:
+
+```bash
+./daybreak restart
+```
+
+The same `.env` supplies both PostgreSQL and Daybreak, so the database password is not maintained in two places. Model values override all bundled default agents at startup.
+
+## Operations
+
+```bash
+./daybreak status
+./daybreak logs
+./daybreak restart
+./daybreak down
+```
+
+`down` preserves the `daybreak-pgdata` volume. Do not run `docker compose down -v` unless permanent database deletion is intended.
+
+## Persistent Data
+
+| Data | Location |
+| --- | --- |
+| Deployment settings and secrets | `.env` |
+| Daybreak configuration and agents | `.daybreak/` |
+| Application log | `.daybreak/app.log` |
+| PostgreSQL data | Docker volume `daybreak-pgdata` |
+| Reports | `reports/` |
+| Sandboxes | Docker containers created dynamically by Daybreak |
+
+Back up `.env`, `.daybreak/`, `reports/`, and PostgreSQL before upgrades. Replacing `daybreak.bin` does not remove these locations.
+
+## Troubleshooting
+
+- `Cannot connect to the Docker daemon`: start Docker, run `./daybreak fix-permissions`, then sign out and back in.
+- `permission denied /var/run/docker.sock`: the current login session has not acquired Docker group membership.
+- `unauthorized` or `denied`: make the GHCR package public or run `./daybreak registry-login` with a `read:packages` token.
+- PostgreSQL failure: run `./daybreak logs`; check port 5432, disk capacity, and the existing data volume.
+- UI works but sandboxes do not: run `./daybreak status` and verify both the sandbox image and Docker socket access.
 
 ## Next Step
 
-Follow the instructions in [First Use](./first-use) to officially start working with 破晓 Daybreak.
+After validating the model connection, follow [First Use](./first-use) to create a sandbox container and work project.

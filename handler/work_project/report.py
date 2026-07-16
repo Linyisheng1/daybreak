@@ -7,7 +7,7 @@ from urllib.parse import quote
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-from config import ROOT_PATH
+from config import DATA_ROOT
 from middleware.auth import AuthUser
 from service.work_project.projects import get_work_project_record_snapshot_for_user
 from service.work_project.report import generate_report
@@ -28,7 +28,7 @@ async def generate_work_project_report(id: int, user: AuthUser) -> StreamingResp
     docx_bytes, filename = await generate_report(snapshot_dict)
 
     # 3. Save to report directory
-    report_dir = ROOT_PATH / "reports"
+    report_dir = DATA_ROOT / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     (report_dir / filename).write_bytes(docx_bytes)
 
