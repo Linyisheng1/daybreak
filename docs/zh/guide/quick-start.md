@@ -7,6 +7,42 @@ editLink: true
 
 推荐部署方式由宿主机上的 `daybreak.bin`、Compose 管理的 PostgreSQL，以及由 Daybreak 动态创建的沙箱容器组成。用户无需安装 Python、Node.js 或编译前端。
 
+## 最短部署路径
+
+在一台 `x86_64/amd64` Linux 机器上复制执行：
+
+```bash
+curl -L -o daybreak-linux-amd64-0.2.0.tar.gz \
+  https://github.com/Linyisheng1/daybreak/releases/download/v0.2.0/daybreak-linux-amd64-0.2.0.tar.gz
+tar -xzf daybreak-linux-amd64-0.2.0.tar.gz
+cd daybreak-linux-amd64-0.2.0
+
+./daybreak doctor
+./daybreak up
+```
+
+启动完成后访问：
+
+```text
+http://服务器IP:8000
+```
+
+首次登录账号和随机密码在 `.env` 中：
+
+```bash
+grep -E "DAYBREAK_ADMIN_EMAIL|DAYBREAK_ADMIN_PASSWORD" .env
+```
+
+如果 `doctor` 或 `up` 提示环境问题，按提示使用：
+
+```bash
+./daybreak install-docker     # Docker 未安装
+./daybreak fix-permissions    # 当前用户无 Docker 权限，执行后重新登录
+./daybreak registry-login     # 私有 GHCR 镜像拉取失败
+./daybreak status             # 查看运行状态
+./daybreak logs               # 查看日志
+```
+
 ## 支持环境
 
 | 项目 | 要求 |

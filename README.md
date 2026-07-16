@@ -38,6 +38,36 @@
 
 ## 快速开始
 
+### 3 分钟部署
+
+在一台 `x86_64/amd64` Linux 机器上执行：
+
+```bash
+curl -L -o daybreak-linux-amd64-0.2.0.tar.gz \
+  https://github.com/Linyisheng1/daybreak/releases/download/v0.2.0/daybreak-linux-amd64-0.2.0.tar.gz
+tar -xzf daybreak-linux-amd64-0.2.0.tar.gz
+cd daybreak-linux-amd64-0.2.0
+
+./daybreak doctor
+./daybreak up
+```
+
+启动完成后访问 `http://服务器IP:8000`。首次登录账号和随机密码保存在 `.env`：
+
+```bash
+grep -E "DAYBREAK_ADMIN_EMAIL|DAYBREAK_ADMIN_PASSWORD" .env
+```
+
+遇到环境问题时优先使用启动器自检和修复命令：
+
+```bash
+./daybreak install-docker     # Docker 未安装
+./daybreak fix-permissions    # 当前用户没有 Docker 权限，执行后重新登录
+./daybreak registry-login     # 私有 GHCR 镜像拉取失败
+./daybreak status             # 查看 Daybreak、PostgreSQL、沙箱镜像状态
+./daybreak logs               # 查看应用和数据库日志
+```
+
 ### Linux 二进制部署（推荐）
 
 支持 Ubuntu、Debian、CentOS、RHEL 及其他使用 Docker Engine 的 `x86_64/amd64` Linux。发行包应包含：

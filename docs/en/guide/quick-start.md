@@ -7,6 +7,42 @@ editLink: true
 
 The recommended deployment runs `daybreak.bin` on the Linux host, PostgreSQL under Compose, and project sandboxes as Docker containers managed dynamically by Daybreak. Python, Node.js, and local frontend builds are not required.
 
+## Copy-Paste Install
+
+Run this on an `x86_64/amd64` Linux host:
+
+```bash
+curl -L -o daybreak-linux-amd64-0.2.0.tar.gz \
+  https://github.com/Linyisheng1/daybreak/releases/download/v0.2.0/daybreak-linux-amd64-0.2.0.tar.gz
+tar -xzf daybreak-linux-amd64-0.2.0.tar.gz
+cd daybreak-linux-amd64-0.2.0
+
+./daybreak doctor
+./daybreak up
+```
+
+Open:
+
+```text
+http://SERVER_IP:8000
+```
+
+The first administrator account and generated password are stored in `.env`:
+
+```bash
+grep -E "DAYBREAK_ADMIN_EMAIL|DAYBREAK_ADMIN_PASSWORD" .env
+```
+
+If `doctor` or `up` reports an environment issue, use the launcher helpers:
+
+```bash
+./daybreak install-docker     # Docker is not installed
+./daybreak fix-permissions    # Current user cannot access Docker; sign in again afterwards
+./daybreak registry-login     # Private GHCR image pull is denied
+./daybreak status             # Inspect runtime status
+./daybreak logs               # Inspect logs
+```
+
 ## Requirements
 
 | Item | Requirement |
