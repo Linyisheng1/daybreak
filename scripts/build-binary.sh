@@ -15,6 +15,10 @@ PYTHON="${PYTHON:-$ROOT_DIR/venv/bin/python}"
 }
 
 cd "$ROOT_DIR"
+if [ -d "$ROOT_DIR/web" ]; then
+    (cd "$ROOT_DIR/web" && npm run build)
+fi
+
 "$PYTHON" -m PyInstaller \
     --noconfirm \
     --clean \

@@ -44,7 +44,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "../dist-app",
+    outDir: "dist-app",
     emptyOutDir: true,
     chunkSizeWarningLimit: 800,
     rollupOptions: {
