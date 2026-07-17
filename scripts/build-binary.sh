@@ -29,6 +29,8 @@ fi
     --add-data "$ROOT_DIR/daybreak-persist/config.json:daybreak-defaults" \
     --add-data "$ROOT_DIR/daybreak-persist/agents:daybreak-defaults/agents" \
     --collect-all agents \
+    --collect-all tiktoken \
+    --collect-all tiktoken_ext \
     --distpath "$ROOT_DIR/release/binary" \
     --workpath "$ROOT_DIR/release/pyinstaller-build" \
     --specpath "$ROOT_DIR/release" \
