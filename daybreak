@@ -50,8 +50,11 @@ DAYBREAK_BINARY=./daybreak.bin
 DAYBREAK_DATA_DIR=.
 DAYBREAK_LISTEN_ADDR=0.0.0.0
 DAYBREAK_APP_PORT=8000
-DAYBREAK_POSTGRES_IMAGE=postgres:16-alpine
-DAYBREAK_SANDBOX_IMAGE=ghcr.io/linyisheng1/daybreak-sandbox:latest
+# Default image sources use China-friendly mirrors. To use official sources, set:
+# DAYBREAK_POSTGRES_IMAGE=postgres:16-alpine
+# DAYBREAK_SANDBOX_IMAGE=ghcr.io/linyisheng1/daybreak-sandbox:latest
+DAYBREAK_POSTGRES_IMAGE=docker.m.daocloud.io/postgres:16-alpine
+DAYBREAK_SANDBOX_IMAGE=ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest
 DAYBREAK_DOCKER_SOCKET=/var/run/docker.sock
 DAYBREAK_DB_HOST=127.0.0.1
 DAYBREAK_DB_PORT=5432
@@ -61,13 +64,13 @@ DAYBREAK_DB_VOLUME=daybreak-pgdata
 DAYBREAK_DB_PASSWORD=$(random_secret)
 DAYBREAK_ADMIN_USERNAME=admin
 DAYBREAK_ADMIN_EMAIL=admin@daybreak.local
-DAYBREAK_ADMIN_PASSWORD=$(random_secret)
+DAYBREAK_ADMIN_PASSWORD=admin
 DAYBREAK_ENCRYPT_KEY=$(random_secret)
 DAYBREAK_MODEL_BASE_URL=
 DAYBREAK_MODEL_API_KEY=
 DAYBREAK_MODEL_NAME=
 EOF
-    say "Created .env with random database, administrator, and encryption secrets."
+    say "Created .env with default administrator account and random database/encryption secrets."
 }
 
 load_env() {
@@ -261,8 +264,8 @@ cmd_up() {
     say "Daybreak is ready."
     printf '  URL:      http://127.0.0.1:%s\n' "$DAYBREAK_APP_PORT"
     printf '  Account:  %s\n' "${DAYBREAK_ADMIN_EMAIL:-admin@daybreak.local}"
-    printf '  Password: stored in %s as DAYBREAK_ADMIN_PASSWORD\n' "$ENV_FILE"
-    printf '  Sandbox:  %s\n' "${DAYBREAK_SANDBOX_IMAGE:-ghcr.io/linyisheng1/daybreak-sandbox:latest}"
+    printf '  Password: admin\n'
+    printf '  Sandbox:  %s\n' "${DAYBREAK_SANDBOX_IMAGE:-ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest}"
 }
 
 cmd_down() {
@@ -291,7 +294,7 @@ cmd_status() {
         printf 'Daybreak application: stopped\n'
     fi
     compose ps
-    if docker_cmd image inspect "${DAYBREAK_SANDBOX_IMAGE:-ghcr.io/linyisheng1/daybreak-sandbox:latest}" >/dev/null 2>&1; then
+    if docker_cmd image inspect "${DAYBREAK_SANDBOX_IMAGE:-ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest}" >/dev/null 2>&1; then
         printf 'Sandbox image: ready\n'
     else
         printf 'Sandbox image: missing\n'

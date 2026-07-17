@@ -52,7 +52,7 @@ cd daybreak-linux-amd64-0.2.0
 ./daybreak up
 ```
 
-启动完成后访问 `http://服务器IP:8000`。首次登录账号和随机密码保存在 `.env`：
+启动完成后访问 http://服务器IP:8000。默认登录账号为 admin@daybreak.local，默认密码为 admin。也可以在 .env 中查看：
 
 ```bash
 grep -E "DAYBREAK_ADMIN_EMAIL|DAYBREAK_ADMIN_PASSWORD" .env
@@ -88,7 +88,8 @@ chmod +x daybreak daybreak.bin
 ./daybreak up
 ```
 
-启动器会生成 `.env` 中的随机管理员密码、数据库密码和加密密钥，拉取 PostgreSQL 与沙箱镜像，启动数据库和 `daybreak.bin`，并等待健康检查通过。访问 **http://127.0.0.1:8000**，管理员密码保存在 `.env` 的 `DAYBREAK_ADMIN_PASSWORD` 中。
+启动器会写入默认管理员账号密码，并生成随机数据库密码和加密密钥，拉取 PostgreSQL 与沙箱镜像，启动数据库和 daybreak.bin，并等待健康检查通过。访问 http://127.0.0.1:8000，默认管理员账号为 admin@daybreak.local，默认密码为 admin。
+镜像源默认使用国内加速：PostgreSQL 为 docker.m.daocloud.io/postgres:16-alpine，沙箱为 ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest。如需切回官方源，编辑 .env 中的 DAYBREAK_POSTGRES_IMAGE 和 DAYBREAK_SANDBOX_IMAGE 后执行 ./daybreak restart。
 
 Docker 尚未安装时：
 

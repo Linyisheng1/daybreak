@@ -2,7 +2,7 @@ name: daybreak
 
 services:
   postgres:
-    image: ${DAYBREAK_POSTGRES_IMAGE:-postgres:16-alpine}
+    image: ${DAYBREAK_POSTGRES_IMAGE:-docker.m.daocloud.io/postgres:16-alpine}
     container_name: daybreak-postgres
     restart: unless-stopped
     environment:
@@ -21,7 +21,7 @@ services:
       retries: 30
 
   sandbox-image:
-    image: ${DAYBREAK_SANDBOX_IMAGE:-ghcr.io/linyisheng1/daybreak-sandbox:latest}
+    image: ${DAYBREAK_SANDBOX_IMAGE:-ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest}
     profiles: ["sandbox-image"]
     entrypoint: ["/bin/true"]
     restart: "no"

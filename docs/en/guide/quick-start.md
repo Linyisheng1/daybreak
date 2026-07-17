@@ -27,7 +27,7 @@ Open:
 http://SERVER_IP:8000
 ```
 
-The first administrator account and generated password are stored in `.env`:
+The default login is admin@daybreak.local with password admin. You can also verify it in .env:
 
 ```bash
 grep -E "DAYBREAK_ADMIN_EMAIL|DAYBREAK_ADMIN_PASSWORD" .env
@@ -116,7 +116,7 @@ Enter a GitHub username and token with `read:packages`. The token is passed to D
 ./daybreak up
 ```
 
-The launcher creates `.env` with mode `600`, generates deployment secrets, pulls PostgreSQL and the sandbox image, starts and validates PostgreSQL, synchronizes its password, starts `daybreak.bin`, initializes runtime files, registers the sandbox image, and waits for the HTTP health check.
+The launcher creates .env with mode 600, writes the default administrator login, generates deployment secrets, pulls PostgreSQL and the sandbox image, starts and validates PostgreSQL, synchronizes its password, starts daybreak.bin, initializes runtime files, registers the sandbox image, and waits for the HTTP health check.
 
 Open:
 
@@ -124,7 +124,8 @@ Open:
 http://127.0.0.1:8000
 ```
 
-The administrator email and generated password are stored in `.env` as `DAYBREAK_ADMIN_EMAIL` and `DAYBREAK_ADMIN_PASSWORD`.
+The default administrator login is admin@daybreak.local / admin, stored in .env as DAYBREAK_ADMIN_EMAIL and DAYBREAK_ADMIN_PASSWORD.
+Default image sources use China-friendly mirrors: docker.m.daocloud.io/postgres:16-alpine for PostgreSQL and ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest for the sandbox. To switch back to official sources, edit DAYBREAK_POSTGRES_IMAGE and DAYBREAK_SANDBOX_IMAGE in .env, then run ./daybreak restart.
 
 ## Model Configuration
 
