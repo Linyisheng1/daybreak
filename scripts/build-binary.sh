@@ -36,4 +36,6 @@ fi
     --specpath "$ROOT_DIR/release" \
     "$ROOT_DIR/main.py"
 
+"$ROOT_DIR/release/binary/daybreak.bin" --self-test-encoding
+
 printf 'binary created: %s\n' "$ROOT_DIR/release/binary/daybreak.bin"

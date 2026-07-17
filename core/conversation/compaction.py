@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import hashlib
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import tiktoken
@@ -67,7 +68,11 @@ def estimate_items_tokens(items: list[TResponseInputItem], model: str) -> int:
     total = 0
     for item in items:
         total += 4
-        total += len(encoding.encode(json.dumps(_summary_safe_value(item), ensure_ascii=False, separators=(",", ":"))))
+        text = json.dumps(_summary_safe_value(item), ensure_ascii=False, separators=(",", ":"))
+        if encoding is None:
+            total += _estimate_tokens_without_tiktoken(text)
+        else:
+            total += len(encoding.encode(text))
     return total
 
 
@@ -431,11 +436,33 @@ def _one_line_error(exc: Exception) -> str:
     return " ".join(str(exc).split())[:500]
 
 
+@lru_cache(maxsize=16)
 def _encoding_for_model(model: str):
+    normalized_model = model.split("/", 1)[-1]
     try:
-        return tiktoken.encoding_for_model(model.split("/", 1)[-1])
-    except Exception:
-        return tiktoken.get_encoding("cl100k_base")
+        return tiktoken.encoding_for_model(normalized_model)
+    except Exception as discovery_error:
+        try:
+            # PyInstaller cannot reliably expose namespace-package modules to
+            # tiktoken's pkgutil-based plugin discovery. Import the built-in
+            # constructors directly so frozen binaries do not depend on it.
+            from tiktoken_ext.openai_public import ENCODING_CONSTRUCTORS
+
+            return tiktoken.Encoding(**ENCODING_CONSTRUCTORS["cl100k_base"]())
+        except Exception as fallback_error:
+            logger.warning(
+                "tiktoken encoding unavailable; using conservative token estimate model=%s discovery=%s fallback=%s",
+                normalized_model,
+                _one_line_error(discovery_error),
+                _one_line_error(fallback_error),
+            )
+            return None
+
+
+def _estimate_tokens_without_tiktoken(text: str) -> int:
+    ascii_chars = sum(1 for char in text if ord(char) < 128)
+    non_ascii_chars = len(text) - ascii_chars
+    return max(1, (ascii_chars + 3) // 4 + non_ascii_chars)
 
 
 def _advisory_lock_key(scope: CompactionScope) -> int:
