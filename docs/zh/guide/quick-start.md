@@ -148,6 +148,17 @@ DAYBREAK_ADMIN_PASSWORD=admin
 ```
 镜像源默认使用国内加速：PostgreSQL 为 docker.m.daocloud.io/postgres:16-alpine，沙箱为 ghcr.nju.edu.cn/linyisheng1/daybreak-sandbox:latest。如需切回官方源，编辑 .env 中的 DAYBREAK_POSTGRES_IMAGE 和 DAYBREAK_SANDBOX_IMAGE 后执行 ./daybreak restart。
 
+
+## 升级更新
+
+用户后续更新不需要重新部署数据库，也不会默认重新拉 PostgreSQL 和沙箱镜像。直接在安装目录执行：
+
+```bash
+./daybreak upgrade          # 升级到 GitHub 最新 Release
+./daybreak upgrade 0.2.1    # 升级到指定版本
+```
+
+`upgrade` 会保留当前 `.env`、PostgreSQL 数据卷、报告目录和本地已有镜像；被替换的 `daybreak`、`daybreak.bin`、依赖 Compose 和默认文件会先备份到 `.daybreak/backups/`。如果 Daybreak 原本正在运行，升级完成后会自动重启应用。
 ## 配置模型
 
 编辑 `.env`：

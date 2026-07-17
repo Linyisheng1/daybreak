@@ -123,6 +123,17 @@ Docker 尚未安装时：
 | `.env` | 安装目录 | 唯一部署参数来源，权限默认为 `600` |
 | `.daybreak/` | 安装目录 | 运行配置、Agent 文件、日志和 PID |
 
+
+## 升级更新
+
+用户后续更新不需要重新部署数据库，也不会默认重新拉 PostgreSQL 和沙箱镜像。直接在安装目录执行：
+
+```bash
+./daybreak upgrade          # 升级到 GitHub 最新 Release
+./daybreak upgrade 0.2.1    # 升级到指定版本
+```
+
+`upgrade` 会保留当前 `.env`、PostgreSQL 数据卷、报告目录和本地已有镜像；被替换的 `daybreak`、`daybreak.bin`、依赖 Compose 和默认文件会先备份到 `.daybreak/backups/`。如果 Daybreak 原本正在运行，升级完成后会自动重启应用。
 ## 配置说明
 
 `.env` 同时驱动 PostgreSQL Compose 和 Daybreak 运行时配置，数据库密码不会再维护两份。修改模型配置后运行 `./daybreak restart`：

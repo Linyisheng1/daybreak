@@ -168,6 +168,16 @@ The same `.env` supplies both PostgreSQL and Daybreak, so the database password 
 | Sandboxes | Docker containers created dynamically by Daybreak |
 
 Back up `.env`, `.daybreak/`, `reports/`, and PostgreSQL before upgrades. Replacing `daybreak.bin` does not remove these locations.
+## Upgrade
+
+Use the launcher to update Daybreak without redeploying the database or pulling dependency images again:
+
+```bash
+./daybreak upgrade          # upgrade to the latest GitHub release
+./daybreak upgrade 0.2.1    # upgrade to a specific release
+```
+
+The upgrade command keeps the current `.env`, PostgreSQL volume, reports, and local Docker images. It backs up replaced files under `.daybreak/backups/`, updates `daybreak.bin`, the launcher, dependency Compose, and default files, then restarts Daybreak if it was already running.
 
 ## Troubleshooting
 
