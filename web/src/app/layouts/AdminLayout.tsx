@@ -1,5 +1,5 @@
 import { Avatar, Button } from "@douyinfe/semi-ui";
-import { Box, Boxes, FolderKanban, LogOut, MessageSquareCode, Network, Server, Settings, Users } from "lucide-react";
+import { Box, Boxes, FolderKanban, LogOut, MessageSquareCode, Network, Server, Settings, ShieldCheck, Users } from "lucide-react";
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { SessionList } from "../../features/playground/SessionList";
@@ -26,6 +26,7 @@ export function useRefreshWorkProjects() {
 const navItems = [
   { path: "/playground", label: UI_TEXT.navPlayground, eyebrow: UI_TEXT.navPlaygroundEyebrow, icon: MessageSquareCode },
   { path: "/work-projects", label: UI_TEXT.navWorkProjects, eyebrow: UI_TEXT.navWorkProjectsEyebrow, icon: FolderKanban, adminOnly: true },
+  { path: "/poc-verifications", label: "PoC 验证", eyebrow: "漏洞复测", icon: ShieldCheck, adminOnly: true },
   { path: "/hosts", label: UI_TEXT.navHosts, eyebrow: UI_TEXT.navHostsEyebrow, icon: Server, adminOnly: true },
   { path: "/egress-proxies", label: UI_TEXT.navEgressProxies, eyebrow: UI_TEXT.navEgressProxiesEyebrow, icon: Network, adminOnly: true },
   { path: "/sandbox-images", label: UI_TEXT.navSandboxImages, eyebrow: UI_TEXT.navSandboxImagesEyebrow, icon: Boxes, adminOnly: true },

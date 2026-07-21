@@ -7,6 +7,7 @@ import {
   loadHostsPage,
   loadLoginPage,
   loadPlaygroundPage,
+  loadPocVerificationsPage,
   loadProtectedAdminShell,
   loadSandboxContainersPage,
   loadSandboxImagesPage,
@@ -29,6 +30,7 @@ const ProtectedAdminShell = lazyRoute(loadProtectedAdminShell, "ProtectedAdminSh
 const EgressProxiesPage = lazyRoute(loadEgressProxiesPage, "EgressProxiesPage");
 const HostsPage = lazyRoute(loadHostsPage, "HostsPage");
 const PlaygroundPage = lazyRoute(loadPlaygroundPage, "PlaygroundPage");
+const PocVerificationsPage = lazyRoute(loadPocVerificationsPage, "PocVerificationsPage");
 const WorkProjectWorkspacePage = lazyRoute(loadWorkProjectWorkspacePage, "WorkProjectWorkspacePage");
 const SandboxContainersPage = lazyRoute(loadSandboxContainersPage, "SandboxContainersPage");
 const SandboxImagesPage = lazyRoute(loadSandboxImagesPage, "SandboxImagesPage");
@@ -78,6 +80,7 @@ export function App() {
                 <Route element={<AdminOnlyRoute />}>
                   <Route path="/hosts" element={<HostsPage />} />
                   <Route path="/egress-proxies" element={<EgressProxiesPage />} />
+                  <Route path="/poc-verifications" element={<PocVerificationsPage />} />
                   <Route path="/work-projects" element={<WorkProjectsPage />} />
                   <Route path="/work-projects/:projectId" element={<WorkProjectWorkspacePage />} />
                   <Route path="/sandbox-images" element={<SandboxImagesPage />} />

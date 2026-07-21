@@ -28,6 +28,7 @@ from router.agent.sessions import router as agent_session_router
 from router.common.fallback import api_not_found_router
 from router.egress_proxy.proxies import router as egress_proxy_router
 from router.host.hosts import router as host_router
+from router.poc.verifications import router as poc_verification_router
 from router.sandbox.containers import router as sandbox_container_router
 from router.sandbox.images import router as sandbox_image_router
 from router.system_config.config import router as system_config_router
@@ -162,6 +163,7 @@ def create_app() -> FastAPI:
     app.include_router(system_user_router, prefix=API_PREFIX)
     app.include_router(host_router, prefix=API_PREFIX)
     app.include_router(egress_proxy_router, prefix=API_PREFIX)
+    app.include_router(poc_verification_router, prefix=API_PREFIX)
     app.include_router(sandbox_image_router, prefix=API_PREFIX)
     app.include_router(sandbox_container_router, prefix=API_PREFIX)
     app.include_router(work_project_router, prefix=API_PREFIX)

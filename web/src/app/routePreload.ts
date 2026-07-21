@@ -5,6 +5,7 @@ const routeLoaders = {
   egressProxies: () => import("../features/egress-proxies/EgressProxiesPage"),
   hosts: () => import("../features/hosts/HostsPage"),
   playground: () => import("../features/playground/PlaygroundPage"),
+  pocVerifications: () => import("../features/poc-verifications/PocVerificationsPage"),
   workProjects: () => import("../features/work-projects/WorkProjectsPage"),
   workProjectWorkspace: () => import("../features/work-projects/WorkProjectWorkspacePage"),
   sandboxImages: () => import("../features/sandbox-images/SandboxImagesPage"),
@@ -15,6 +16,7 @@ const routeLoaders = {
 
 const adminRouteLoaders: Record<string, () => Promise<unknown>> = {
   "/playground": routeLoaders.playground,
+  "/poc-verifications": routeLoaders.pocVerifications,
   "/egress-proxies": routeLoaders.egressProxies,
   "/hosts": routeLoaders.hosts,
   "/work-projects": routeLoaders.workProjects,
@@ -33,6 +35,7 @@ export const loadProtectedAdminShell = routeLoaders.protectedAdminShell;
 export const loadEgressProxiesPage = routeLoaders.egressProxies;
 export const loadHostsPage = routeLoaders.hosts;
 export const loadPlaygroundPage = routeLoaders.playground;
+export const loadPocVerificationsPage = routeLoaders.pocVerifications;
 export const loadWorkProjectsPage = routeLoaders.workProjects;
 export const loadWorkProjectWorkspacePage = routeLoaders.workProjectWorkspace;
 export const loadSandboxImagesPage = routeLoaders.sandboxImages;

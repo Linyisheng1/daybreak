@@ -1,5 +1,5 @@
 from agents.extensions.memory import SQLAlchemySession
-from sqlalchemy import URL
+from sqlalchemy import URL, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -8,6 +8,7 @@ from config import get_config
 from logger import get_logger
 from model.egress_proxy.proxies import EgressProxy
 from model.host.hosts import ManagedHost
+from model.poc.verifications import PocDefinition, PocRun
 from model.sandbox.async_jobs import SandboxAsyncJob
 from model.agent.notifications import AgentNotification
 from model.agent.subordinates import AgentSubordinateTask
@@ -38,6 +39,7 @@ _registered_models = [
     WorkProjectGraphEdge, WorkProjectAttackPath, WorkProjectAttackPathStep,
     AgentSessionMeta, AgentMessageMeta, AgentContextCompaction,
     AgentSubordinateTask, AgentNotification, SandboxAsyncJob, AgentEventLog,
+    PocDefinition, PocRun,
 ]
 
 _engine: AsyncEngine | None = None
@@ -55,6 +57,9 @@ async def create_all_tables() -> None:
     async with _engine.begin() as conn:
         await conn.run_sync(sdk_metadata.create_all)
         await conn.run_sync(SQLModel.metadata.create_all)
+        await conn.execute(text(
+            "ALTER TABLE poc_runs ALTER COLUMN sandbox_container_id DROP NOT NULL"
+        ))
 
     logger.info("all tables created")
 
