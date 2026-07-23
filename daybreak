@@ -8,6 +8,10 @@ PID_FILE="$ROOT_DIR/.daybreak/daybreak.pid"
 LOG_FILE="$ROOT_DIR/.daybreak/app.log"
 DOCKER_CMD=()
 
+if [ -x "$ROOT_DIR/tools/nuclei" ]; then
+    export DAYBREAK_NUCLEI_BIN="$ROOT_DIR/tools/nuclei"
+fi
+
 say() {
     printf '\n[Daybreak] %s\n' "$1"
 }

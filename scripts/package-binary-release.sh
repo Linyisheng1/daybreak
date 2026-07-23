@@ -25,6 +25,15 @@ install -m 600 \
     "$PACKAGE_DIR/daybreak-defaults/config.json"
 cp -a "$ROOT_DIR/daybreak-persist/agents" "$PACKAGE_DIR/daybreak-defaults/agents"
 
+if [ -n "${NUCLEI_BINARY:-}" ]; then
+    [ -x "$NUCLEI_BINARY" ] || {
+        printf 'Nuclei binary is not executable: %s\n' "$NUCLEI_BINARY" >&2
+        exit 1
+    }
+    mkdir -p "$PACKAGE_DIR/tools"
+    install -m 755 "$NUCLEI_BINARY" "$PACKAGE_DIR/tools/nuclei"
+fi
+
 tar -C "$OUTPUT_DIR" -czf "$OUTPUT_DIR/daybreak-linux-amd64-$VERSION.tar.gz" \
     "daybreak-linux-amd64-$VERSION"
 
