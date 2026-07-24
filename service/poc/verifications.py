@@ -8,14 +8,18 @@ import re
 import shlex
 import signal
 import time
+import zipfile
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import yaml
-from sqlalchemy import String, cast, or_
+from sqlalchemy import String, cast, func, or_
 from sqlmodel import select
 
+from config import DATA_ROOT
 from database import get_async_session
+from logger import get_logger
 from model.host.hosts import ManagedHost
 from model.poc.verifications import PocDefinition, PocRun
 from model.sandbox.containers import SandboxContainer
@@ -43,6 +47,8 @@ class PocValidationError(ValueError):
 class PocExecutionError(ValueError):
     pass
 
+
+logger = get_logger(__name__)
 
 NUCLEI_TEMPLATE_COMMAND = 'nuclei -silent -jsonl -u "{{target}}" -t <imported-template>'
 NUCLEI_PROTOCOL_KEYS = (
@@ -123,6 +129,80 @@ async def create_poc(request: CreatePocRequest, *, user_id: int) -> PocDefinitio
         await session.commit()
         await session.refresh(poc)
     return PocDefinitionSchema.model_validate(poc)
+
+
+async def seed_bundled_poc_library(*, user_id: int) -> dict[str, int]:
+    report = {"scanned": 0, "imported": 0, "invalid": 0}
+    async with get_async_session() as session:
+        existing_count = (await session.exec(select(func.count()).select_from(PocDefinition))).one()
+    if existing_count:
+        return report
+
+    archive = _bundled_poc_archive()
+    if archive is None:
+        return report
+
+    pending: list[PocDefinition] = []
+    known_ids: set[str] = set()
+
+    async def flush() -> None:
+        if not pending:
+            return
+        async with get_async_session() as session:
+            session.add_all(pending)
+            await session.commit()
+        pending.clear()
+
+    with zipfile.ZipFile(archive) as poc_zip:
+        for entry in poc_zip.infolist():
+            if entry.is_dir() or Path(entry.filename).suffix.lower() not in {".yaml", ".yml", ".json"}:
+                continue
+            report["scanned"] += 1
+            try:
+                request = parse_poc_document(poc_zip.read(entry).decode("utf-8"))
+                template_id = str(request.raw_content.get("id") or "").strip()
+                if not template_id or template_id in known_ids:
+                    report["invalid"] += 1
+                    continue
+                known_ids.add(template_id)
+                now = datetime.now()
+                pending.append(PocDefinition(
+                    name=request.name,
+                    description=request.description,
+                    severity=request.severity or "unknown",
+                    category=request.category,
+                    tags=request.tags,
+                    command=request.command,
+                    raw_content=request.raw_content,
+                    created_by=user_id,
+                    created_at=now,
+                    updated_at=now,
+                ))
+                report["imported"] += 1
+                if len(pending) >= 500:
+                    await flush()
+            except (UnicodeError, yaml.YAMLError, PocValidationError, ValueError):
+                report["invalid"] += 1
+    await flush()
+    logger.info(
+        "bundled PoC library seeded: archive=%s scanned=%s imported=%s invalid=%s",
+        archive.name,
+        report["scanned"],
+        report["imported"],
+        report["invalid"],
+    )
+    return report
+
+
+def _bundled_poc_archive() -> Path | None:
+    configured = os.getenv("DAYBREAK_POC_LIBRARY", "").strip()
+    if configured:
+        candidate = Path(configured).expanduser().resolve()
+        return candidate if candidate.is_file() else None
+    library_dir = DATA_ROOT / "pocs"
+    if not library_dir.is_dir():
+        return None
+    return next(iter(sorted(library_dir.glob("*.zip"))), None)
 
 
 async def query_pocs(
@@ -270,13 +350,7 @@ async def run_poc(
             )
             output = result.output[-20000:]
             exit_code = result.exit_code
-        if exit_code == 0:
-            status = PocRunStatus.PASSED
-        elif exit_code == 10:
-            status = PocRunStatus.FAILED
-        else:
-            status = PocRunStatus.ERROR
-            error = output.strip()[-1000:] or f"PoC runner exited with code {exit_code}"
+        status, error = classify_nuclei_execution(output, exit_code)
     except SandboxContainerCommandTimeoutError as exc:
         error = str(exc)
     except Exception as exc:
@@ -400,7 +474,8 @@ def _build_nuclei_execution_command(template: dict[str, Any]) -> str:
         "template_path=$(mktemp /tmp/daybreak-poc-XXXXXX.yaml); "
         "result_path=$(mktemp /tmp/daybreak-poc-result-XXXXXX.jsonl); "
         "error_path=$(mktemp /tmp/daybreak-poc-error-XXXXXX.log); "
-        "cleanup() { rm -f \"$template_path\" \"$result_path\" \"$error_path\"; }; "
+        "stderr_path=$(mktemp /tmp/daybreak-poc-stderr-XXXXXX.log); "
+        "cleanup() { rm -f \"$template_path\" \"$result_path\" \"$error_path\" \"$stderr_path\"; }; "
         "trap cleanup EXIT; "
         "nuclei_bin=\"${DAYBREAK_NUCLEI_BIN:-}\"; "
         "if [ -n \"$nuclei_bin\" ] && [ -x \"$nuclei_bin\" ]; then :; "
@@ -408,12 +483,100 @@ def _build_nuclei_execution_command(template: dict[str, Any]) -> str:
         "else "
         "echo 'nuclei is not installed in the Daybreak runtime or selected sandbox' >&2; exit 127; fi; "
         f"printf '%s' {encoded_arg} | base64 -d > \"$template_path\"; "
-        "\"$nuclei_bin\" -silent -jsonl -no-color -duc -u \"$TARGET\" -t \"$template_path\" "
-        ">\"$result_path\" 2>\"$error_path\"; scan_status=$?; "
-        "cat \"$error_path\" >&2; cat \"$result_path\"; "
-        "if [ \"$scan_status\" -ne 0 ]; then exit \"$scan_status\"; fi; "
-        "if [ ! -s \"$result_path\" ]; then echo 'No vulnerability match' >&2; exit 10; fi"
+        "\"$nuclei_bin\" -silent -jsonl -no-color -duc -ms -elog \"$error_path\" "
+        "-u \"$TARGET\" -t \"$template_path\" "
+        ">\"$result_path\" 2>\"$stderr_path\"; scan_status=$?; "
+        "cat \"$result_path\"; cat \"$error_path\" >&2; cat \"$stderr_path\" >&2; "
+        "exit \"$scan_status\""
     )
+
+
+def classify_nuclei_execution(output: str, exit_code: int | None) -> tuple[PocRunStatus, str]:
+    if exit_code not in (0, 10):
+        reason = _last_diagnostic_line(output) or f"Nuclei 退出码为 {exit_code}"
+        return PocRunStatus.ERROR, f"执行失败：{reason}"[:1000]
+
+    records: list[dict[str, Any]] = []
+    diagnostics: list[str] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError:
+            diagnostics.append(stripped)
+            continue
+        if isinstance(record, dict):
+            records.append(record)
+
+    matcher_records = [record for record in records if "matcher-status" in record]
+    if any(record.get("matcher-status") is True for record in matcher_records):
+        return PocRunStatus.PASSED, ""
+
+    request_errors = _unique_text(
+        str(record.get("error") or "").strip()
+        for record in records
+        if record.get("error")
+    )
+    completed_checks = [
+        record for record in matcher_records
+        if record.get("matcher-status") is False and not record.get("error")
+    ]
+    if completed_checks:
+        reason = "模板执行成功，但目标响应未满足漏洞匹配条件"
+        if request_errors:
+            reason += f"；部分请求失败：{_summarize_nuclei_errors(request_errors)}"
+        return PocRunStatus.FAILED, reason[:1000]
+
+    if request_errors:
+        return PocRunStatus.ERROR, f"执行失败：{_summarize_nuclei_errors(request_errors)}"[:1000]
+
+    # Nuclei versions without matcher-status only emit JSONL records for findings.
+    if records:
+        return PocRunStatus.PASSED, ""
+    if diagnostics:
+        return PocRunStatus.ERROR, f"执行失败：{diagnostics[-1]}"[:1000]
+    if exit_code == 10:
+        return PocRunStatus.FAILED, "模板执行成功，但未发现漏洞匹配"
+    return PocRunStatus.FAILED, "模板执行完成，但未返回漏洞匹配结果"
+
+
+def _unique_text(values) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        if value and value not in result:
+            result.append(value)
+    return result
+
+
+def _summarize_nuclei_errors(errors: list[str]) -> str:
+    translations = (
+        ("port closed or filtered", "目标端口关闭或被过滤"),
+        ("connection refused", "目标拒绝连接"),
+        ("no such host", "域名解析失败"),
+        ("network is unreachable", "目标网络不可达"),
+        ("context deadline exceeded", "连接目标超时"),
+        ("i/o timeout", "连接目标超时"),
+        ("invalid scheme", "目标地址格式或协议无效"),
+        ("failed to parse url", "目标地址格式或协议无效"),
+    )
+    summaries: list[str] = []
+    for error in errors[:5]:
+        normalized = error.lower()
+        translated = next((label for fragment, label in translations if fragment in normalized), "")
+        summary = f"{translated}（{error}）" if translated else error
+        if summary not in summaries:
+            summaries.append(summary)
+    return "；".join(summaries)
+
+
+def _last_diagnostic_line(output: str) -> str:
+    for line in reversed(output.splitlines()):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
 
 
 def _first_string(data: dict[str, Any], *keys: str) -> str:

@@ -231,8 +231,9 @@ export function PocVerificationsPage() {
   ];
 
   const runColumns: ResourceColumn<PocRun>[] = [
-    { key: "status", header: "结果", width: "88px", render: (run) => <RunStatusTag status={run.status} /> },
+    { key: "status", header: "结果", width: "126px", render: (run) => <RunStatusTag status={run.status} /> },
     { key: "target", header: "目标", width: "minmax(180px, 1fr)", render: (run) => <ResourceText>{run.target}</ResourceText> },
+    { key: "reason", header: "判定说明", width: "minmax(240px, 1fr)", render: (run) => <ResourceText>{runResultReason(run)}</ResourceText> },
     { key: "runner", header: "执行器", width: "170px", render: (run) => run.sandbox_container_name },
     { key: "time", header: "耗时", width: "88px", render: (run) => `${run.duration_ms} ms` },
     { key: "updated", header: "时间", width: "150px", render: (run) => formatDateTime(run.finished_at || run.started_at) },
@@ -423,6 +424,14 @@ function SeverityTag({ severity }: { severity: string }) {
 
 function RunStatusTag({ status }: { status: PocRunStatus }) {
   const color = status === "passed" ? "red" : status === "failed" ? "green" : status === "error" ? "orange" : "blue";
-  const label = status === "passed" ? "命中" : status === "failed" ? "未命中" : status === "error" ? "异常" : "运行中";
+  const label = status === "passed" ? "成功 · 命中" : status === "failed" ? "成功 · 未命中" : status === "error" ? "执行失败" : "运行中";
   return <Tag color={color}>{label}</Tag>;
+}
+
+function runResultReason(run: PocRun) {
+  if (run.error) return run.error;
+  if (run.status === "passed") return "模板执行成功，目标满足漏洞匹配条件";
+  if (run.status === "failed") return "模板执行成功，目标未满足漏洞匹配条件";
+  if (run.status === "running" || run.status === "queued") return "等待执行完成";
+  return "执行器未返回可用结果";
 }

@@ -34,6 +34,15 @@ if [ -n "${NUCLEI_BINARY:-}" ]; then
     install -m 755 "$NUCLEI_BINARY" "$PACKAGE_DIR/tools/nuclei"
 fi
 
+if [ -n "${POC_LIBRARY_ARCHIVE:-}" ]; then
+    [ -f "$POC_LIBRARY_ARCHIVE" ] || {
+        printf 'PoC library archive not found: %s\n' "$POC_LIBRARY_ARCHIVE" >&2
+        exit 1
+    }
+    mkdir -p "$PACKAGE_DIR/pocs"
+    install -m 644 "$POC_LIBRARY_ARCHIVE" "$PACKAGE_DIR/pocs/TscanPlus_pocs_8690.zip"
+fi
+
 tar -C "$OUTPUT_DIR" -czf "$OUTPUT_DIR/daybreak-linux-amd64-$VERSION.tar.gz" \
     "daybreak-linux-amd64-$VERSION"
 

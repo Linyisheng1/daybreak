@@ -37,6 +37,7 @@ from router.work_project.projects import router as work_project_router
 from schema.system_user.users import SystemUserRole
 from service.agent.recovery import recover_pending_sessions
 from service.host.hosts import ensure_local_managed_host
+from service.poc.verifications import seed_bundled_poc_library
 from service.sandbox.control_proxy import close_control_proxy_http_client
 from service.sandbox.files import close_file_http_client
 from service.sandbox.images import ensure_sandbox_image
@@ -78,6 +79,15 @@ async def _bootstrap_admin_user() -> None:
     logger.info("bootstrap admin user created: %s", bootstrap.username)
 
 
+async def _bootstrap_poc_library() -> None:
+    bootstrap = get_config().system.bootstrap_admin
+    admin = await query_system_user_by_username(bootstrap.username)
+    if admin is None:
+        logger.debug("bundled PoC library skipped: bootstrap admin is unavailable")
+        return
+    await seed_bundled_poc_library(user_id=admin.id)
+
+
 async def _bootstrap_local_host() -> None:
     host = await ensure_local_managed_host()
     logger.debug("default local host ensured: %s", host.id)
@@ -115,6 +125,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         init_engine()
         await create_all_tables()
         await _bootstrap_admin_user()
+        await _bootstrap_poc_library()
         await _bootstrap_local_host()
         await _bootstrap_sandbox_image()
 
