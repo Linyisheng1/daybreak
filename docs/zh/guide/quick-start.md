@@ -21,6 +21,9 @@ cd daybreak-linux-amd64-v0.3.0
 ./daybreak up
 ```
 
+Linux 发行包支持 `x86_64`，要求系统提供 `glibc 2.31` 或更高版本。运行
+`ldd --version` 可以查看当前版本。请勿为了运行 Daybreak 手动替换系统 glibc。
+
 系统尚未安装 `curl` 时，先按发行版执行其中一条：
 
 ```bash

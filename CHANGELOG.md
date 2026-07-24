@@ -17,6 +17,8 @@ All notable changes to 破晓 Daybreak are documented in this file.
 
 ### Fixed
 
+- Rebuilt the Linux binary against glibc 2.31 for openEuler 22.03 and other
+  enterprise Linux distributions.
 - Report target connection, DNS, URL parsing, timeout, and runner failures as execution errors instead of ordinary no-match results.
 - Display an actionable reason for every PoC execution failure.
 

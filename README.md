@@ -52,6 +52,10 @@ cd daybreak-linux-amd64-v0.3.0
 ./daybreak up
 ```
 
+Linux 发行包支持 `x86_64`，运行环境需要 `glibc 2.31` 或更高版本。可用
+`ldd --version` 查看系统版本；openEuler 22.03、Rocky Linux 9、AlmaLinux 9
+及较新的 Ubuntu/Debian 均满足这一基线。
+
 系统尚未安装 `curl` 时，先按发行版执行其中一条：
 
 ```bash

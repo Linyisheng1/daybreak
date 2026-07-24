@@ -21,6 +21,10 @@ cd daybreak-linux-amd64-v0.3.0
 ./daybreak up
 ```
 
+The Linux package supports `x86_64` systems with `glibc 2.31` or newer. Run
+`ldd --version` to check the installed version. Do not replace the system glibc
+manually just to run Daybreak.
+
 If `curl` is not installed, first run the command for your distribution:
 
 ```bash
