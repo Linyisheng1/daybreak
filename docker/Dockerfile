@@ -112,7 +112,7 @@ RUN python /tmp/patch_report_route.py && rm /tmp/patch_report_route.py
 RUN mkdir -p /app/reports /app/.daybreak
 
 # 复制默认配置和智能体提示词
-COPY daybreak-persist/config.json /app/.daybreak/config.json
+COPY deploy/config.default.json /app/.daybreak/config.json
 COPY daybreak-persist/agents/ /app/.daybreak/agents/
 
 EXPOSE 8000

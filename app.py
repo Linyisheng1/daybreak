@@ -158,7 +158,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     app = FastAPI(
         title="破晓 Daybreak - A controlled multi-agent workbench for authorized security assessment, code auditing, internal review, and controlled research.",
-        version="0.2.1",
+        version="0.3.0",
         lifespan=lifespan,
     )
 

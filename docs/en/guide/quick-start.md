@@ -12,13 +12,20 @@ The recommended deployment runs `daybreak.bin` on the Linux host, PostgreSQL und
 Run this on an `x86_64/amd64` Linux host:
 
 ```bash
-curl -L -o daybreak-linux-amd64-0.2.0.tar.gz \
-  https://github.com/Linyisheng1/daybreak/releases/download/v0.2.0/daybreak-linux-amd64-0.2.0.tar.gz
-tar -xzf daybreak-linux-amd64-0.2.0.tar.gz
-cd daybreak-linux-amd64-0.2.0
+curl -fL --retry 3 -o daybreak-linux-amd64-v0.3.0.tar.gz \
+  https://github.com/Linyisheng1/daybreak/releases/download/v0.3.0/daybreak-linux-amd64-v0.3.0.tar.gz
+tar -xzf daybreak-linux-amd64-v0.3.0.tar.gz
+cd daybreak-linux-amd64-v0.3.0
 
 ./daybreak doctor
 ./daybreak up
+```
+
+If `curl` is not installed, first run the command for your distribution:
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl  # Ubuntu / Debian
+sudo dnf install -y curl                            # CentOS Stream / RHEL / Rocky / Alma
 ```
 
 Open:
@@ -174,7 +181,7 @@ Use the launcher to update Daybreak without redeploying the database or pulling 
 
 ```bash
 ./daybreak upgrade          # upgrade to the latest GitHub release
-./daybreak upgrade 0.2.1    # upgrade to a specific release
+./daybreak upgrade 0.3.0    # upgrade to a specific release
 ```
 
 The upgrade command keeps the current `.env`, PostgreSQL volume, reports, and local Docker images. It backs up replaced files under `.daybreak/backups/`, updates `daybreak.bin`, the launcher, dependency Compose, and default files, then restarts Daybreak if it was already running.

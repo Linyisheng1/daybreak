@@ -21,7 +21,7 @@ install -m 644 \
     "$ROOT_DIR/deploy/docker-compose.dependencies.yml" \
     "$PACKAGE_DIR/deploy/docker-compose.dependencies.yml"
 install -m 600 \
-    "$ROOT_DIR/daybreak-persist/config.json" \
+    "$ROOT_DIR/deploy/config.default.json" \
     "$PACKAGE_DIR/daybreak-defaults/config.json"
 cp -a "$ROOT_DIR/daybreak-persist/agents" "$PACKAGE_DIR/daybreak-defaults/agents"
 

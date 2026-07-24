@@ -1,0 +1,87 @@
+{
+  "system": {
+    "listen_addr": "0.0.0.0",
+    "listen_port": 8000,
+    "encrypt_key": "replace-with-at-least-32-random-characters",
+    "bootstrap_admin": {
+      "enabled": true,
+      "username": "admin",
+      "email": "admin@daybreak.local",
+      "password": "admin"
+    }
+  },
+  "database": {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "database": "daybreak",
+    "username": "",
+    "password": "",
+    "pool_size": 32,
+    "max_overflow": 32,
+    "pool_timeout_seconds": 30,
+    "pool_recycle_seconds": 1800,
+    "pool_pre_ping": true
+  },
+  "agents": {
+    "cso": {
+      "code": "cso",
+      "name": "破晓 Daybreak",
+      "description": "Chief Security Officer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    },
+    "cae": {
+      "code": "cae",
+      "name": "V3ra",
+      "description": "Chief Audit Engineer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    },
+    "cce": {
+      "code": "cce",
+      "name": "Nu1L",
+      "description": "Chief Cryptography Engineer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    },
+    "cie": {
+      "code": "cie",
+      "name": "L1ly",
+      "description": "Chief Intelligence Engineer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    },
+    "cpe": {
+      "code": "cpe",
+      "name": "Fr4nk",
+      "description": "Chief Penetration Engineer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    },
+    "cre": {
+      "code": "cre",
+      "name": "J4m3",
+      "description": "Chief Reverse Engineer",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-5.5",
+      "use_responses": false,
+      "context_window": 1000000
+    }
+  }
+}

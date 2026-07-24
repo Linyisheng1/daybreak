@@ -12,13 +12,20 @@ editLink: true
 在一台 `x86_64/amd64` Linux 机器上复制执行：
 
 ```bash
-curl -L -o daybreak-linux-amd64-0.2.0.tar.gz \
-  https://github.com/Linyisheng1/daybreak/releases/download/v0.2.0/daybreak-linux-amd64-0.2.0.tar.gz
-tar -xzf daybreak-linux-amd64-0.2.0.tar.gz
-cd daybreak-linux-amd64-0.2.0
+curl -fL --retry 3 -o daybreak-linux-amd64-v0.3.0.tar.gz \
+  https://github.com/Linyisheng1/daybreak/releases/download/v0.3.0/daybreak-linux-amd64-v0.3.0.tar.gz
+tar -xzf daybreak-linux-amd64-v0.3.0.tar.gz
+cd daybreak-linux-amd64-v0.3.0
 
 ./daybreak doctor
 ./daybreak up
+```
+
+系统尚未安装 `curl` 时，先按发行版执行其中一条：
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl  # Ubuntu / Debian
+sudo dnf install -y curl                            # CentOS Stream / RHEL / Rocky / Alma
 ```
 
 启动完成后访问：
@@ -155,7 +162,7 @@ DAYBREAK_ADMIN_PASSWORD=admin
 
 ```bash
 ./daybreak upgrade          # 升级到 GitHub 最新 Release
-./daybreak upgrade 0.2.1    # 升级到指定版本
+./daybreak upgrade 0.3.0    # 升级到指定版本
 ```
 
 `upgrade` 会保留当前 `.env`、PostgreSQL 数据卷、报告目录和本地已有镜像；被替换的 `daybreak`、`daybreak.bin`、依赖 Compose 和默认文件会先备份到 `.daybreak/backups/`。如果 Daybreak 原本正在运行，升级完成后会自动重启应用。

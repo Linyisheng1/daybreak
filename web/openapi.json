@@ -5387,7 +5387,7 @@
   },
   "info": {
     "title": "Daybreak - A controlled multi-agent workbench for authorized security assessment, code auditing, internal review, and controlled research.",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {

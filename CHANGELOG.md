@@ -2,6 +2,24 @@
 
 All notable changes to 破晓 Daybreak are documented in this file.
 
+## [0.3.0] - 2026-07-24
+
+### Added
+
+- Added a dedicated PoC verification workspace with direct and sandbox execution modes.
+- Bundled Nuclei v3.8.0 and the validated 8690-template TscanPlus PoC library in the Linux release.
+- Added automatic PoC library seeding for fresh databases and complete release download commands.
+
+### Changed
+
+- Separated successful execution from vulnerability matching in PoC results.
+- Updated deployment documentation with `curl` download, extraction, diagnostics, and startup steps.
+
+### Fixed
+
+- Report target connection, DNS, URL parsing, timeout, and runner failures as execution errors instead of ordinary no-match results.
+- Display an actionable reason for every PoC execution failure.
+
 ## [0.2.1] - 2026-07-01
 
 ### Added

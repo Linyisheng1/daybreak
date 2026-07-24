@@ -26,7 +26,7 @@ fi
     --name daybreak.bin \
     --paths "$ROOT_DIR" \
     --add-data "$ROOT_DIR/web/dist-app:web/dist-app" \
-    --add-data "$ROOT_DIR/daybreak-persist/config.json:daybreak-defaults" \
+    --add-data "$ROOT_DIR/deploy/config.default.json:daybreak-defaults" \
     --add-data "$ROOT_DIR/daybreak-persist/agents:daybreak-defaults/agents" \
     --collect-all agents \
     --collect-all tiktoken \
